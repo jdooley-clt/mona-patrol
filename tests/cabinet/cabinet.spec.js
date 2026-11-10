@@ -163,9 +163,34 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect.poll(() => stageData(page, 'status')).toBe('paused');
 
-  // Resume, then verify game over focus management & axe scan
+  // Resume, verify Stage A–E Clear stats screen + Replay A–E + axe scan
   await page.keyboard.press('Enter');
   await expect.poll(() => stageData(page, 'status')).toBe('playing');
+  await page.evaluate(() => {
+    const st = window.__monaPatrol.getState();
+    st.course.obstacles = [];
+    st.course.waves = [];
+    st.sectionStats.ufosSpawned = 6;
+    st.sectionStats.ufosDestroyed = 5;
+    st.sectionStats.rocksDestroyed = 4;
+    st.sectionStats.hazardsJumped = 3;
+    st.sectionStats.shotsFired = 10;
+    st.sectionStats.shotsHit = 8;
+    st.buggy.worldX = st.course.length - 10;
+    window.__monaPatrol.advance(250);
+  });
+  await expect.poll(() => stageData(page, 'status')).toBe('sector-clear');
+  await expect(page.locator('#stats-grid')).toBeVisible();
+  await expect(page.locator('#stat-ufos')).toHaveText('5 / 6');
+  await expect(page.locator('#stat-rocks')).toHaveText('4');
+  await expect(page.locator('#primary')).toBeFocused();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  await page.locator('#replay-sector').click();
+  await expect.poll(() => stageData(page, 'status')).toBe('playing');
+  await expect.poll(() => stageData(page, 'checkpoint')).toBe('A');
+
+  // Verify game over focus management & axe scan
   await page.evaluate(() => {
     const st = window.__monaPatrol.getState();
     st.lives = 1;

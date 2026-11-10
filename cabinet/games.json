@@ -17,6 +17,6 @@
     { "keys": "P / Esc", "action": "Pause or resume" },
     { "keys": "M / Audio", "action": "Toggle synthesized audio" }
   ],
-  "instructions": "Leap merge-conflict craters, blast boulders and overhead bug saucers, and reach checkpoints A to E under the 40-second par time for a sector bonus. Audio starts off; use the game's own audio, theme, and touch controls.",
+  "instructions": "Leap merge-conflict craters, blast boulders and passing bug saucers overhead, and clear checkpoints A to E under the 50-second par time for section stats and bonus points. Audio starts off; use the game's own sound, theme, and touch controls.",
   "viewport": { "layout": "document", "height": 980, "mobileHeight": 920 }
 }

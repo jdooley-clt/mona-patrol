@@ -7,12 +7,14 @@ import {
   GROUND_Y,
   PAR_SECONDS,
   SECTION_LENGTH,
+  WORLD_WIDTH,
   advanceToNextSector,
   buildSectorCourse,
   createGameState,
   fireWeapons,
   generateCourseSection,
   groundYAt,
+  replayCurrentSector,
   requestJump,
   shiftGear,
   startGame,
@@ -24,7 +26,7 @@ test('deterministic course generation produces repeatable, safely spaced legs', 
   const first = generateCourseSection(0, 4242, 0);
   const second = generateCourseSection(0, 4242, 0);
   assert.deepEqual(first, second);
-  assert.ok(first.obstacles.length >= 3, 'leg has multiple hazards');
+  assert.ok(first.obstacles.length >= 1, 'opening leg has gentle introductory hazards');
   assert.ok(first.waves.length >= 1, 'leg schedules at least one UFO wave');
 
   for (let i = 0; i < first.obstacles.length; i++) {
@@ -34,7 +36,7 @@ test('deterministic course generation produces repeatable, safely spaced legs', 
     if (i > 0) {
       const prev = first.obstacles[i - 1];
       const gap = obs.x - (prev.x + prev.width);
-      assert.ok(gap >= 220, `obstacles maintain jumpable gap (got ${gap})`);
+      assert.ok(gap >= 350, `Stage 1 obstacles maintain generous gap (got ${gap})`);
     }
   }
 });
@@ -277,4 +279,86 @@ test('bomber bombs carve craters only in safe road stretches and groundYAt flatt
   stepGame(state, 0.04);
   assert.equal(state.course.obstacles.length, 1);
   assert.equal(state.course.obstacles[0].kind, 'crater-small');
+});
+
+test('UFOs always enter from the left edge, pass over the player, and never drop bombs on top of the rover', () => {
+  const state = createGameState({ seed: 2026 });
+  startGame(state, { seed: 2026 });
+  state.course.obstacles = [];
+
+  // Advance until the first wave in B–C spawns (which has allowBombs: true)
+  let sawSpawnLeft = false;
+  let passedOverBuggy = false;
+  while (state.status === 'playing' && state.buggy.worldX < SECTION_LENGTH * 2.4) {
+    const prevCount = state.ufos.length;
+    stepGame(state, 0.04);
+    if (state.ufos.length > prevCount) {
+      for (const u of state.ufos) {
+        if (u.age <= 0.05) {
+          assert.ok(u.screenX < 0, `UFO spawns off left screen edge (got ${u.screenX})`);
+        }
+      }
+      sawSpawnLeft = true;
+    }
+    for (const u of state.ufos) {
+      if (Math.abs(u.screenX - state.buggy.screenX) < 12) {
+        passedOverBuggy = true;
+      }
+    }
+    for (const b of state.bombs) {
+      const bombScreenX = b.x - state.cameraX;
+      // Newly dropped flares always start well ahead of the rover
+      if (b.y < 100) {
+        assert.ok(bombScreenX > state.buggy.screenX + 200, 'bombs only drop well ahead of rover');
+      }
+    }
+  }
+  assert.equal(sawSpawnLeft, true);
+  assert.equal(passedOverBuggy, true);
+});
+
+test('Stage 1 (A–E) achieves >= 90% completion across 100 seeds with basic player reactions and records full stats', () => {
+  let clears = 0;
+  for (let seed = 1; seed <= 100; seed++) {
+    const state = createGameState({ seed });
+    startGame(state, { seed });
+
+    // Simulate a casual human player with imperfect periodic firing and basic crater/rock jumps
+    let fireTimer = 0;
+    for (let step = 0; step < 2500 && state.status !== 'sector-clear' && state.status !== 'gameover'; step++) {
+      if (state.status === 'playing') {
+        fireTimer += 0.04;
+        // Imperfect player fires only every ~0.55s or when a UFO passes overhead
+        const ufoOverhead = state.ufos.some(
+          (u) => u.screenX > state.buggy.screenX - 30 && u.screenX < state.buggy.screenX + 20,
+        );
+        if (fireTimer >= 0.55 || ufoOverhead) {
+          fireWeapons(state);
+          fireTimer = 0;
+        }
+        // Jump when an un-destroyed hazard is within casual reaction distance (75px ahead)
+        const hazardAhead = state.course.obstacles.some(
+          (o) => !o.destroyed && o.x - state.buggy.worldX > 10 && o.x - state.buggy.worldX < 80,
+        );
+        if (hazardAhead && state.buggy.grounded) {
+          requestJump(state);
+        }
+      }
+      stepGame(state, 0.04);
+    }
+
+    if (state.status === 'sector-clear') {
+      clears += 1;
+      const bonus = state.lastSectorBonus;
+      assert.equal(bonus.sectorRange, 'A–E');
+      assert.ok(bonus.ufosSpawned >= 4);
+      assert.ok(bonus.bonus >= 1000);
+      if (seed === 1) {
+        replayCurrentSector(state);
+        assert.equal(state.status, 'playing');
+        assert.equal(state.checkpointLetter, 'A');
+      }
+    }
+  }
+  assert.ok(clears >= 90, `Expected >= 90% Stage 1 clear rate across 100 seeds, got ${clears}%`);
 });

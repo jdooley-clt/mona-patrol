@@ -33,15 +33,16 @@ west/east/trigger to fire, Start to begin or pause).
   (`hotfix`), and `U–Z` (`omega`). After `Z`, patrol loops at higher intensity.
 - **Checkpoint beacons**: reaching any lettered gate awards `+500` points and updates your safe
   respawn point if one of your 3 buggies crashes. Earn an extra buggy at `10,000` points.
-- **Sector time bonus**: clearing major gates (`E`, `J`, `O`, `T`, `Z`) awards `1,000` points
-  plus `100` points per second under the 40-second par time.
+- **Sector time & stats summary**: clearing major gates (`E`, `J`, `O`, `T`, `Z`) plays a
+  triumphant 8-bit fanfare, shows full section stats, and awards `1,000` clear points, `80` points
+  per second under the 50-second par time, UFO bonuses, and `+1,000` for a flawless run.
 - **Hazards**:
   - **Merge-conflict craters (`<<<`)** and **broken-build mines (`!`)** cannot be shot and must
     be jumped (`+100` to `+150` pts).
   - **Lunar boulders** can be jumped or blasted (`1` hit for small rocks, `2` hits for tall
     stacks; `+100` to `+200` pts).
-  - **Bug saucers** weave overhead and drop regression bombs (`+100` pts when shot mid-air;
-    bomber pods can carve fresh road craters). Clear a full saucer wave for `+500` bonus points.
+  - **Bug saucers** enter from the left of the screen and fly over your rover so you can shoot
+    them overhead (`+200` to `+300` pts, `+500` wave clear) and intercept slow flares (`+100` pts).
 - **Accessibility & motion**: audio starts muted, focus loss pauses play automatically, an ARIA
   live region announces checkpoints and scores, and `prefers-reduced-motion` disables parallax
   drift and crash shake.

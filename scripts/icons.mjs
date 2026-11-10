@@ -6,38 +6,38 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const COLORS = {
-  k: '#34313e', // graphite outline
-  i: '#fffdf4', // warm ivory face & stars
-  l: '#ded4f1', // candy lavender sky/body
-  L: '#b6a3d2', // lavender trim
-  p: '#6f5a9a', // deep lavender chassis
-  m: '#c5e7d8', // mint canopy/visor
-  M: '#62bc84', // commit green beacon
-  c: '#ffb7a5', // coral blaster/blush
-  r: '#b11f4b', // ruby warning/laser
-  g: '#e6e0cf', // lunar regolith
+  k: '#34313e', // graphite pixel outline
+  i: '#fffdf4', // creamy ivory face & wheel hubs
+  s: '#fff7df', // warm arcade cream sky
+  l: '#ded4f1', // candy lavender trim
+  p: '#ed9eb7', // candy pink 8-bit rover fender
+  c: '#ffb7a5', // coral-peach road & blush
+  q: '#96dce2', // aqua dome / steering
+  m: '#c5e7b1', // mint beacon
+  r: '#b11f4b', // ruby laser
 };
 
-const BACKGROUND = 'l';
+const BACKGROUND = 's';
 
-// 16x16 pixel Mona driving the six-wheel lunar patrol buggy.
+// 16x16 8-bit pixel Mona (tall Octocat ears, wide ivory face, vertical eyes, curling tentacle)
+// seated openly in the candy-pink 6-wheel lunar rover.
 export const MAP = [
-  '.llllllllllllll.',
-  'llkkllllllkkllll',
-  'llkkkllllkkkllMl',
-  'llkkkkkkkkkkllkl',
-  'lkkiiiiiiiikklll',
-  'lkiiikkiikkiklll',
-  'lkiciiiiiicikmml',
-  'lkkkkkkkkkkkkmml',
-  'llppppppppppppll',
-  'lppppLLLLLLppppc',
-  'lkkkkkkkkkkkkkkl',
-  'llkkllkkllkkllll',
-  'llkkllkkllkkllll',
-  'gggggggggggggggg',
-  'ggggLggggggLgggg',
-  '.gggggggggggggg.',
+  '.ssssssssssssss.',
+  'ssskksssssskksss',
+  'ssskkkkkkkkkksss',
+  'sskkiiiiiiiikkss',
+  'sskikkiissiikkss',
+  'sskikkiissiikkss',
+  'sskiciiikkiiciks',
+  'sk.kkkkkkkkkkqqs',
+  'kk..kkkkkkkkqqqs',
+  'skppppppppppppcr',
+  'skppllllllllppks',
+  'skkkkkkkkkkkkkks',
+  'sskksskkkksskkss',
+  'sskksskkkksskkss',
+  'cccccccccccccccc',
+  '.cccccccccccccc.',
 ];
 
 export const PNG_ICONS = [
@@ -178,9 +178,9 @@ export function ogImage() {
     // Buggy sprite (scale 14 -> 224x224) leaping toward crater
     const bx = Math.floor((x - 310) / 14);
     const by = Math.floor((y - 238) / 14);
-    if (bx >= 0 && bx < 16 && by >= 0 && by < 13) {
+    if (bx >= 0 && bx < 16 && by >= 0 && by < 14) {
       const ch = MAP[by][bx];
-      if (ch !== '.' && ch !== 'l' && ch !== 'g') return rgba(COLORS[ch]);
+      if (ch !== '.' && ch !== 's' && ch !== 'c') return rgba(COLORS[ch]);
     }
 
     // Forward laser beam

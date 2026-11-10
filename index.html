@@ -82,9 +82,19 @@
           <div class="overlay" id="overlay">
             <p class="eyebrow" id="overlay-kicker">CHECKPOINT A — MAIN BRANCH</p>
             <h2 id="overlay-title">Patrol the lunar ridge.</h2>
-            <p id="overlay-detail">Leap merge-conflict craters, blast boulders ahead and bug saucers overhead, and race through checkpoints A to E for a sector time bonus.</p>
+            <p id="overlay-detail">Leap merge-conflict craters, blast boulders ahead and bug saucers overhead, and clear checkpoints A to E.</p>
+            <dl class="stats-grid" id="stats-grid" hidden>
+              <div><dt>Section time</dt><dd id="stat-time">00.0s</dd></div>
+              <div><dt>UFOs eliminated</dt><dd id="stat-ufos">0 / 0</dd></div>
+              <div><dt>Boulders blasted</dt><dd id="stat-rocks">0</dd></div>
+              <div><dt>Hazards jumped</dt><dd id="stat-jumps">0</dd></div>
+              <div><dt>Shot accuracy</dt><dd id="stat-accuracy">100%</dd></div>
+              <div><dt>Stage bonus</dt><dd id="stat-bonus">+1000</dd></div>
+            </dl>
             <div class="overlay-actions">
               <button id="primary" class="primary" type="button">Start patrol <span aria-hidden="true">→</span></button>
+              <button id="replay-sector" class="secondary-btn" type="button" hidden>Replay A–E</button>
+              <button id="overlay-audio" class="secondary-btn" type="button" aria-pressed="false">Sound: off (M)</button>
             </div>
           </div>
         </div>
@@ -147,8 +157,8 @@
     <ul class="help-list">
       <li><b>Merge-conflict craters (<code>&lt;&lt;&lt;</code>)</b>: cannot be shot — time your jump arc to clear them (+100 to +150 pts).</li>
       <li><b>Lunar boulders</b>: jump over them or blast small rocks (1 hit, +100 pts) and tall fractured stacks (2 hits, +200 pts).</li>
-      <li><b>Bug saucers overhead</b>: shoot them with your upward turret (+200 to +300 pts, +500 wave clear) and intercept falling regression bombs (+100 pts).</li>
-      <li><b>Sector clear bonus</b>: finish major checkpoints (<b>E</b>, <b>J</b>, <b>O</b>, <b>T</b>, <b>Z</b>) under the 40-second par time for 1,000+ bonus points.</li>
+      <li><b>Bug saucers overhead</b>: enter from the left and pass over your rover — shoot them with your upward turret (+200 to +300 pts, +500 wave clear) and intercept flares (+100 pts).</li>
+      <li><b>Stage clear summary</b>: finish major checkpoints (<b>E</b>, <b>J</b>, <b>O</b>, <b>T</b>, <b>Z</b>) under the 50-second par time for a triumphant fanfare, section stats, and bonus points.</li>
     </ul>
 
     <h3>Credits</h3>

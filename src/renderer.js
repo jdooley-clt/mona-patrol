@@ -1,5 +1,6 @@
-// 2D Canvas renderer for Mona Patrol — original vector & pixel sprites in the
-// Commit Cabinet's pastel ivory, lavender, mint, coral, and graphite palette.
+// True 8-bit stepped pixel-art 2D Canvas renderer for Mona Patrol.
+// Built on a strict 2px integer pixel grid (`imageSmoothingEnabled = false`) using the
+// Commit Cabinet's candy-arcade palette, bitmap pixel font, and canonical pixel Mona.
 
 import {
   WORLD_WIDTH,
@@ -10,708 +11,750 @@ import {
   sectorCheckpointLetters,
 } from './engine.js';
 
-const PALETTES = {
+const PX = 2; // 1 arcade pixel = 2x2 canvas pixels (320x180 true 8-bit raster feel on 640x360)
+const snap = (v) => Math.round(v / PX) * PX;
+
+export const PALETTES = {
   light: {
-    skyTop: '#f7f4e9',
-    skyBottom: '#efe9dc',
-    dot: '#ddd5c3',
-    mesaFill: '#ded4f1',
-    mesaShade: '#cbbce6',
-    ridgeFill: '#c5e7d8',
-    ridgeShade: '#a7d6c2',
-    roadSurface: '#ece5f8',
-    roadSub: '#d8cde9',
-    roadDeep: '#c5b6de',
-    craterBg: '#e4dccf',
-    ink: '#2b2835',
-    ivory: '#fffdf4',
+    sky: '#fff7df',
+    skyBand: '#f7efd4',
+    starA: '#ded4f1',
+    starB: '#ffb7a5',
+    moon: '#fffdf4',
+    moonCrater: '#ded4f1',
+    farMtn: '#ded4f1',
+    farShade: '#c3b2e3',
+    midHill: '#c5e7b1',
+    midShade: '#9ed097',
+    dome: '#fffdf4',
+    domeRoof: '#96dce2',
+    roadTop: '#ffb7a5',
+    roadMid: '#e89592',
+    roadDeep: '#d8cde9',
+    pebble: '#c97879',
+    craterPit: '#f3e8cc',
+    ink: '#34313e',
+    paper: '#fffdf4',
+    pink: '#ed9eb7',
+    peach: '#ffb7a5',
     lavender: '#ded4f1',
-    lavenderDeep: '#533e7d',
-    mint: '#c5e7d8',
-    commit: '#4ea870',
-    coral: '#ffb7a5',
-    ruby: '#9e1940',
+    purple: '#8a6fb3',
+    aqua: '#96dce2',
+    mint: '#c5e7b1',
+    leaf: '#568773',
+    ruby: '#b11f4b',
     gold: '#f5cc66',
-    radarBg: 'rgba(255, 253, 244, 0.88)',
+    hudBg: '#fffdf4',
   },
   dark: {
-    skyTop: '#22202b',
-    skyBottom: '#2c2838',
-    dot: '#3a3548',
-    mesaFill: '#3e3554',
-    mesaShade: '#332b46',
-    ridgeFill: '#2f4d43',
-    ridgeShade: '#264037',
-    roadSurface: '#3b344d',
-    roadSub: '#302a40',
-    roadDeep: '#262134',
-    craterBg: '#1b1824',
-    ink: '#f4efe2',
-    ivory: '#fffdf4',
-    lavender: '#6d5c94',
-    lavenderDeep: '#dcd0fa',
-    mint: '#4b7d6b',
-    commit: '#67c98c',
-    coral: '#ff9d87',
-    ruby: '#ff7b9c',
+    sky: '#1b1826',
+    skyBand: '#231f31',
+    starA: '#fffdf4',
+    starB: '#96dce2',
+    moon: '#fff7df',
+    moonCrater: '#d5c6ef',
+    farMtn: '#3f3459',
+    farShade: '#312847',
+    midHill: '#2d574b',
+    midShade: '#23453b',
+    dome: '#ded4f1',
+    domeRoof: '#96dce2',
+    roadTop: '#e89592',
+    roadMid: '#b56974',
+    roadDeep: '#3a3250',
+    pebble: '#7d4454',
+    craterPit: '#14111d',
+    ink: '#34313e',
+    outlineLight: '#f4efe2',
+    paper: '#fffdf4',
+    pink: '#ed9eb7',
+    peach: '#ffb7a5',
+    lavender: '#ded4f1',
+    purple: '#8a6fb3',
+    aqua: '#96dce2',
+    mint: '#c5e7b1',
+    leaf: '#67c98c',
+    ruby: '#ff6e91',
     gold: '#f7d274',
-    radarBg: 'rgba(34, 32, 43, 0.9)',
+    hudBg: '#2c283c',
   },
 };
 
-// 12x10 pixel Mona head + torso in cockpit (k=dark ink, i=ivory, c=coral blush, m=mint visor)
-const MONA_SPRITE = [
-  '.kk......kk.',
-  '.kkk....kkk.',
-  '.kkkkkkkkkk.',
-  'kkiiiiiiiikk',
-  'kiikkiikkiik',
-  'kiikkiikkiik',
-  'kiciiiiiicik',
-  'kkkkkkkkkkkk',
-  '.kkmmmmmmkk.',
-  '..kkkkkkkk..',
+// Crisp 3x5 / 4x5 8-bit bitmap glyphs (no anti-aliased system fonts on canvas)
+const GLYPHS = {
+  A: ['010', '101', '111', '101', '101'],
+  B: ['110', '101', '110', '101', '110'],
+  C: ['011', '100', '100', '100', '011'],
+  D: ['110', '101', '101', '101', '110'],
+  E: ['111', '100', '110', '100', '111'],
+  F: ['111', '100', '110', '100', '100'],
+  G: ['011', '100', '101', '101', '011'],
+  H: ['101', '101', '111', '101', '101'],
+  I: ['111', '010', '010', '010', '111'],
+  J: ['001', '001', '001', '101', '010'],
+  K: ['101', '101', '110', '101', '101'],
+  L: ['100', '100', '100', '100', '111'],
+  M: ['101', '111', '111', '101', '101'],
+  N: ['101', '111', '111', '111', '101'],
+  O: ['010', '101', '101', '101', '010'],
+  P: ['110', '101', '110', '100', '100'],
+  Q: ['010', '101', '101', '111', '011'],
+  R: ['110', '101', '110', '101', '101'],
+  S: ['011', '100', '010', '001', '110'],
+  T: ['111', '010', '010', '010', '010'],
+  U: ['101', '101', '101', '101', '111'],
+  V: ['101', '101', '101', '101', '010'],
+  W: ['101', '101', '111', '111', '101'],
+  X: ['101', '101', '010', '101', '101'],
+  Y: ['101', '101', '010', '010', '010'],
+  Z: ['111', '001', '010', '100', '111'],
+  '0': ['111', '101', '101', '101', '111'],
+  '1': ['010', '110', '010', '010', '111'],
+  '2': ['110', '001', '010', '100', '111'],
+  '3': ['110', '001', '010', '001', '110'],
+  '4': ['101', '101', '111', '001', '001'],
+  '5': ['111', '100', '110', '001', '110'],
+  '6': ['011', '100', '111', '101', '111'],
+  '7': ['111', '001', '010', '010', '010'],
+  '8': ['111', '101', '111', '101', '111'],
+  '9': ['111', '101', '111', '001', '110'],
+  '!': ['010', '010', '010', '000', '010'],
+  '<': ['001', '010', '100', '010', '001'],
+  '-': ['000', '000', '111', '000', '000'],
+  '+': ['000', '010', '111', '010', '000'],
+  ' ': ['000', '000', '000', '000', '000'],
+};
+
+// Canonical pixel Mona seated in open cockpit (23x14 @ 2px = 46x28 px)
+// Unmistakable tall Octocat ears, wide creamy face, vertical eyes, peach cheeks,
+// cute mouth, waving left tentacle, and paws on the aqua steering wheel.
+const MONA_PILOT_A = [
+  '.....kkk........kkk....',
+  '.....kkkk......kkkk....',
+  '.....kkkkkkkkkkkkkk....',
+  '....kkkkkkkkkkkkkkkk...',
+  '....kkiiiiiiiiiiiikk...',
+  '...kkiiiiiiiiiiiiiikk..',
+  '...kkiikkiiiiiikkiikk..',
+  '...kkiikkiiiiiikkiikk..',
+  '...kkiikkiiiiiikkiikk..',
+  '...kkicciiikkiiiccikk..',
+  '....kkiiiiiiiiiiiikk...',
+  '.kk..kkkkkkkkkkkkkk....',
+  'kkkk...kkkkkkkkkkkqq...',
+  '.kkk....kkkkkkkkkqqq...',
 ];
 
-function drawPixelMap(ctx, map, x, y, scale, colors) {
-  for (let row = 0; row < map.length; row++) {
-    const line = map[row];
-    for (let col = 0; col < line.length; col++) {
-      const ch = line[col];
+const MONA_PILOT_B = [
+  '.....kkk........kkk....',
+  '.....kkkk......kkkk....',
+  '.....kkkkkkkkkkkkkk....',
+  '....kkkkkkkkkkkkkkkk...',
+  '....kkiiiiiiiiiiiikk...',
+  '...kkiiiiiiiiiiiiiikk..',
+  '...kkiikkiiiiiikkiikk..',
+  '...kkiikkiiiiiikkiikk..',
+  '...kkiikkiiiiiikkiikk..',
+  '...kkicciiikkiiiccikk..',
+  '.kk.kkiiiiiiiiiiiikk...',
+  'kkkk.kkkkkkkkkkkkkk....',
+  '.kkk...kkkkkkkkkkkqq...',
+  '........kkkkkkkkkqqq...',
+];
+
+// 20x12 @ 2px (40x24 px) 8-bit Bug Saucer UFO (2 animation frames)
+const UFO_SPRITE_A = [
+  '....kk........kk....',
+  '.....kk......kk.....',
+  '......kkkkkkkk......',
+  '....kkqqqqqqqqkk....',
+  '...kqqiiqqqqqqqqk...',
+  '.kkkkkkkkkkkkkkkkkk.',
+  'kppppppppppppppppppk',
+  'kppiiipppiiipppiiipk',
+  '.kkkkkkkkkkkkkkkkkk.',
+  '..kk..kk....kk..kk..',
+  '.kk...kk....kk...kk.',
+  '....................',
+];
+
+const UFO_SPRITE_B = [
+  '...kk..........kk...',
+  '....kk........kk....',
+  '......kkkkkkkk......',
+  '....kkqqqqqqqqkk....',
+  '...kqqiiqqqqqqqqk...',
+  '.kkkkkkkkkkkkkkkkkk.',
+  'kppppppppppppppppppk',
+  'kpiiipppiiipppiiippk',
+  '.kkkkkkkkkkkkkkkkkk.',
+  '...kk..kk..kk..kk...',
+  '..kk....kkkk....kk..',
+  '....................',
+];
+
+// 13x11 @ 2px (26x22 px) 8-bit small lunar boulder
+const ROCK_SMALL_MAP = [
+  '....kkkkk....',
+  '..kkllllllk..',
+  '.klliiillllk.',
+  'klliilllllllk',
+  'kllllllllsssk',
+  'klllllllssssk',
+  'kllllllsssssk',
+  'klllllssssssk',
+  'kllllsssssssk',
+  '.ksssssssssk.',
+  '..kkkkkkkkk..',
+];
+
+// 16x16 @ 2px (32x32 px) 8-bit tall lunar boulder
+const ROCK_TALL_MAP = [
+  '.....kkkkkk.....',
+  '...kkllllllkk...',
+  '..klliiilllllk..',
+  '.klliillllllllk.',
+  '.klllllllllsssk.',
+  'kllllllllllssssk',
+  'klllkkllllsssssk',
+  'kllliillllsssssk',
+  'kllllllllssssssk',
+  'klllllllsssssssk',
+  'kllllllssssssssk',
+  'kllllllssssssssk',
+  'klllllsssssssssk',
+  '.klllsssssssssk.',
+  '.kssssssssssssk.',
+  '..kkkkkkkkkkkk..',
+];
+
+// 7x7 @ 2px (14x14 px) chunky 8-bit rover wheel (2 spoke rotation frames)
+const WHEEL_A = [
+  '.kkkkk.',
+  'kkkkkkk',
+  'kkkikkk',
+  'kkiikkk',
+  'kkkikkk',
+  'kkkkkkk',
+  '.kkkkk.',
+];
+
+const WHEEL_B = [
+  '.kkkkk.',
+  'kkkkkkk',
+  'kkikikk',
+  'kkk.kkk',
+  'kkikikk',
+  'kkkkkkk',
+  '.kkkkk.',
+];
+
+function pxRect(ctx, x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(snap(x), snap(y), snap(w), snap(h));
+}
+
+function pxFrame(ctx, x, y, w, h, fill, border = '#34313e') {
+  pxRect(ctx, x, y, w, h, border);
+  pxRect(ctx, x + PX, y + PX, w - PX * 2, h - PX * 2, fill);
+}
+
+function drawBitmapText(ctx, text, x, y, scale = 2, color = '#34313e') {
+  let cursor = snap(x);
+  const top = snap(y);
+  for (const ch of String(text).toUpperCase()) {
+    const g = GLYPHS[ch] ?? GLYPHS[' '];
+    for (let gy = 0; gy < g.length; gy++) {
+      const row = g[gy];
+      for (let gx = 0; gx < row.length; gx++) {
+        if (row[gx] === '1') {
+          ctx.fillStyle = color;
+          ctx.fillRect(cursor + gx * scale, top + gy * scale, scale, scale);
+        }
+      }
+    }
+    cursor += scale * 4;
+  }
+}
+
+function drawSprite(ctx, map, x, y, colors, pixelSize = PX) {
+  const ox = snap(x);
+  const oy = snap(y);
+  for (let r = 0; r < map.length; r++) {
+    const line = map[r];
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c];
       if (ch === '.' || !colors[ch]) continue;
       ctx.fillStyle = colors[ch];
-      ctx.fillRect(Math.round(x + col * scale), Math.round(y + row * scale), scale, scale);
+      ctx.fillRect(ox + c * pixelSize, oy + r * pixelSize, pixelSize, pixelSize);
     }
   }
 }
 
-function drawSkyAndParallax(ctx, state, pal, reducedMotion) {
-  const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-  grad.addColorStop(0, pal.skyTop);
-  grad.addColorStop(1, pal.skyBottom);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+// Stepped 8-bit mountain height (quantized to 6px vertical steps every 8px horizontally)
+function farMtnHeight(wx) {
+  const col = Math.floor(wx / 8);
+  const h = 188 + Math.sin(col * 0.09) * 32 + Math.cos(col * 0.21) * 16;
+  return Math.round(h / 6) * 6;
+}
 
-  // Subtle blueprint star/dot grid
-  const starScroll = reducedMotion ? 0 : (state.cameraX * 0.06) % 32;
-  ctx.fillStyle = pal.dot;
-  for (let sx = -starScroll; sx < WORLD_WIDTH; sx += 32) {
-    for (let sy = 18; sy < GROUND_Y - 70; sy += 32) {
-      ctx.fillRect(Math.round(sx), sy, 2, 2);
-    }
-  }
+function midHillHeight(wx) {
+  const col = Math.floor(wx / 8);
+  const h = 232 + Math.sin(col * 0.14 + 1.4) * 18 + Math.cos(col * 0.31) * 8;
+  return Math.round(h / 4) * 4;
+}
 
-  // Twinkling constellation crosses
-  ctx.fillStyle = pal.ivory;
-  const stars = [
-    [84, 42],
-    [224, 30],
-    [388, 52],
-    [542, 36],
+function drawSkyAndParallax(ctx, state, pal, reducedMotion, dark) {
+  const border = dark ? pal.outlineLight : pal.ink;
+
+  // Stepped 8-bit sky bands
+  pxRect(ctx, 0, 0, WORLD_WIDTH, GROUND_Y, pal.sky);
+  pxRect(ctx, 0, 0, WORLD_WIDTH, 56, pal.skyBand);
+
+  // Pixelated stars
+  const starOffset = reducedMotion ? 0 : Math.floor((state.cameraX * 0.05) / PX) * PX;
+  const starCoords = [
+    [52, 26],
+    [138, 44],
+    [224, 22],
+    [318, 48],
+    [412, 28],
+    [578, 38],
+    [96, 82],
+    [276, 76],
+    [458, 72],
   ];
-  for (const [bx, by] of stars) {
-    const px = ((bx - (reducedMotion ? 0 : state.cameraX * 0.04)) % WORLD_WIDTH + WORLD_WIDTH) % WORLD_WIDTH;
-    ctx.fillRect(px - 4, by, 9, 2);
-    ctx.fillRect(px, by - 4, 2, 9);
+  for (const [idx, [sx, sy]] of starCoords.entries()) {
+    const px = (((sx - starOffset) % WORLD_WIDTH) + WORLD_WIDTH) % WORLD_WIDTH;
+    const blink = !reducedMotion && Math.floor(state.elapsed * 3 + idx) % 5 === 0;
+    const col = idx % 2 === 0 ? pal.starA : pal.starB;
+    if (blink) {
+      pxRect(ctx, px - 4, sy, 10, 2, col);
+      pxRect(ctx, px, sy - 4, 2, 10, col);
+    } else {
+      pxRect(ctx, px, sy, 4, 4, col);
+    }
   }
 
-  // Far lunar mesas (lavender)
-  const farOffset = reducedMotion ? 0 : state.cameraX * 0.16;
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND_Y);
-  for (let x = 0; x <= WORLD_WIDTH; x += 8) {
-    const wx = x + farOffset;
-    const h = 196 + Math.sin(wx * 0.0065) * 28 + Math.cos(wx * 0.014) * 14;
-    ctx.lineTo(x, h);
-  }
-  ctx.lineTo(WORLD_WIDTH, GROUND_Y);
-  ctx.closePath();
-  ctx.fillStyle = pal.mesaFill;
-  ctx.fill();
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  // Pixelated lunar globe in upper-right sky
+  const moonX = 508;
+  const moonY = 34;
+  const spans = [12, 20, 26, 30, 32, 34, 34, 34, 32, 30, 26, 20, 12];
+  spans.forEach((w, row) => {
+    const ry = moonY + row * 3;
+    pxRect(ctx, moonX - w / 2 - 2, ry, w + 4, 4, border);
+  });
+  spans.forEach((w, row) => {
+    const ry = moonY + row * 3;
+    if (row > 0 && row < spans.length - 1) {
+      pxRect(ctx, moonX - w / 2, ry, w, 4, pal.moon);
+    }
+  });
+  pxRect(ctx, moonX - 8, moonY + 12, 6, 6, pal.moonCrater);
+  pxRect(ctx, moonX + 4, moonY + 22, 8, 6, pal.moonCrater);
 
-  // Mid repository ridges + commit beacons (mint)
-  const midOffset = reducedMotion ? 0 : state.cameraX * 0.36;
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND_Y);
-  for (let x = 0; x <= WORLD_WIDTH; x += 8) {
-    const wx = x + midOffset;
-    const h = 236 + Math.sin(wx * 0.011 + 1.2) * 18 + Math.cos(wx * 0.025) * 8;
-    ctx.lineTo(x, h);
+  // Far stepped 8-bit lavender mountain range
+  const farScroll = reducedMotion ? 0 : Math.floor((state.cameraX * 0.16) / 8) * 8;
+  for (let sx = 0; sx < WORLD_WIDTH; sx += 8) {
+    const wx = sx + farScroll;
+    const h = farMtnHeight(wx);
+    const nextH = farMtnHeight(wx + 8);
+    pxRect(ctx, sx, h, 8, GROUND_Y - h, nextH > h ? pal.farShade : pal.farMtn);
+    pxRect(ctx, sx, h, 8, PX, border);
+    if (nextH !== h) {
+      const top = Math.min(h, nextH);
+      const diff = Math.abs(nextH - h);
+      pxRect(ctx, sx + 6, top, PX, diff + PX, border);
+    }
   }
-  ctx.lineTo(WORLD_WIDTH, GROUND_Y);
-  ctx.closePath();
-  ctx.fillStyle = pal.ridgeFill;
-  ctx.fill();
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 2;
-  ctx.stroke();
 
-  // Distant branch towers along mid ridge
-  const towerSpacing = 220;
-  const firstTower = Math.floor(midOffset / towerSpacing) * towerSpacing;
-  for (let tx = firstTower; tx < midOffset + WORLD_WIDTH + towerSpacing; tx += towerSpacing) {
-    const sx = tx - midOffset;
-    const baseH = 236 + Math.sin(tx * 0.011 + 1.2) * 18 + Math.cos(tx * 0.025) * 8;
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(sx, baseH);
-    ctx.lineTo(sx, baseH - 18);
-    ctx.stroke();
-    ctx.fillStyle = pal.commit;
-    ctx.beginPath();
-    ctx.arc(sx, baseH - 21, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+  // Mid stepped 8-bit mint hills + pixel GitHub lunar outposts
+  const midScroll = reducedMotion ? 0 : Math.floor((state.cameraX * 0.36) / 8) * 8;
+  for (let sx = 0; sx < WORLD_WIDTH; sx += 8) {
+    const wx = sx + midScroll;
+    const h = midHillHeight(wx);
+    const nextH = midHillHeight(wx + 8);
+    pxRect(ctx, sx, h, 8, GROUND_Y - h, nextH > h ? pal.midShade : pal.midHill);
+    pxRect(ctx, sx, h, 8, PX, border);
+    if (nextH !== h) {
+      pxRect(ctx, sx + 6, Math.min(h, nextH), PX, Math.abs(nextH - h) + PX, border);
+    }
+  }
+
+  // Pixel REPO domes & branch masts on mid hills
+  const domePeriod = 256;
+  const firstDome = Math.floor(midScroll / domePeriod) * domePeriod;
+  for (let dx = firstDome; dx < midScroll + WORLD_WIDTH + domePeriod; dx += domePeriod) {
+    const sx = snap(dx - midScroll);
+    const baseY = midHillHeight(dx);
+    // Antenna mast
+    pxRect(ctx, sx + 12, baseY - 26, PX, 12, border);
+    pxRect(ctx, sx + 10, baseY - 30, 6, 6, pal.pink);
+    // Stepped pixel dome
+    pxFrame(ctx, sx, baseY - 16, 28, 16, pal.dome, border);
+    pxFrame(ctx, sx + 4, baseY - 20, 20, 6, pal.domeRoof, border);
+    pxRect(ctx, sx + 10, baseY - 10, 8, 8, pal.ink);
   }
 }
 
-function drawTerrainAndCraters(ctx, state, pal) {
-  const camX = state.cameraX;
+function drawPixelRoadAndCraters(ctx, state, pal, reducedMotion, dark) {
+  const camX = snap(state.cameraX);
+  const border = dark ? pal.outlineLight : pal.ink;
+
   const craters = state.course.obstacles.filter(
     (o) =>
       o.kind.startsWith('crater') &&
-      o.x + o.width >= camX - 40 &&
-      o.x <= camX + WORLD_WIDTH + 40,
+      o.x + o.width >= camX - 32 &&
+      o.x <= camX + WORLD_WIDTH + 32,
   );
 
-  // Fill lunar crust polygon with jagged merge-conflict chasms
-  ctx.beginPath();
-  ctx.moveTo(0, WORLD_HEIGHT);
-
-  let x = 0;
-  while (x <= WORLD_WIDTH) {
-    const wx = camX + x;
-    const crater = craters.find((c) => wx >= c.x && wx <= c.x + c.width);
+  // Draw road in 4px stepped columns
+  for (let sx = 0; sx < WORLD_WIDTH; sx += 4) {
+    const wx = camX + sx;
+    const crater = craters.find((c) => wx >= c.x && wx < c.x + c.width);
     if (crater) {
-      const leftScreen = crater.x - camX;
-      const rightScreen = crater.x + crater.width - camX;
-      const midScreen = (leftScreen + rightScreen) * 0.5;
-      const depth = crater.kind === 'crater-wide' ? 40 : 32;
-      ctx.lineTo(leftScreen, GROUND_Y);
-      ctx.lineTo(leftScreen + crater.width * 0.22, GROUND_Y + depth * 0.72);
-      ctx.lineTo(midScreen, GROUND_Y + depth);
-      ctx.lineTo(rightScreen - crater.width * 0.22, GROUND_Y + depth * 0.68);
-      ctx.lineTo(rightScreen, GROUND_Y);
-      x = Math.max(x + 4, Math.ceil(rightScreen));
+      const rel = (wx - crater.x) / crater.width;
+      const stepDepth = rel < 0.2 || rel > 0.8 ? 14 : rel < 0.38 || rel > 0.62 ? 26 : 36;
+      const pitY = GROUND_Y + stepDepth;
+      pxRect(ctx, sx, GROUND_Y, 4, stepDepth, pal.craterPit);
+      pxRect(ctx, sx, pitY, 4, WORLD_HEIGHT - pitY, pal.roadDeep);
+      pxRect(ctx, sx, pitY, 4, PX * 2, border);
     } else {
       const gy = groundYAt(wx, state.course.obstacles, state.course.gates);
-      ctx.lineTo(x, gy);
-      x += 6;
+      pxRect(ctx, sx, gy, 4, 16, pal.roadTop);
+      pxRect(ctx, sx, gy + 16, 4, 18, pal.roadMid);
+      pxRect(ctx, sx, gy + 34, 4, WORLD_HEIGHT - (gy + 34), pal.roadDeep);
+      pxRect(ctx, sx, gy, 4, PX * 2, border);
     }
   }
-  ctx.lineTo(WORLD_WIDTH, WORLD_HEIGHT);
-  ctx.closePath();
-  ctx.fillStyle = pal.roadSurface;
-  ctx.fill();
 
-  // Sub-surface regolith band
-  ctx.fillStyle = pal.roadSub;
-  ctx.fillRect(0, GROUND_Y + 18, WORLD_WIDTH, WORLD_HEIGHT - GROUND_Y - 18);
-
-  // Outline road top & decorate craters with non-color-only conflict markers
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  x = 0;
-  let started = false;
-  while (x <= WORLD_WIDTH) {
-    const wx = camX + x;
-    const crater = craters.find((c) => wx >= c.x && wx <= c.x + c.width);
-    if (crater) {
-      const leftScreen = crater.x - camX;
-      const rightScreen = crater.x + crater.width - camX;
-      const midScreen = (leftScreen + rightScreen) * 0.5;
-      const depth = crater.kind === 'crater-wide' ? 40 : 32;
-      ctx.lineTo(leftScreen, GROUND_Y);
-      ctx.lineTo(leftScreen + crater.width * 0.22, GROUND_Y + depth * 0.72);
-      ctx.lineTo(midScreen, GROUND_Y + depth);
-      ctx.lineTo(rightScreen - crater.width * 0.22, GROUND_Y + depth * 0.68);
-      ctx.lineTo(rightScreen, GROUND_Y);
-      x = Math.max(x + 4, Math.ceil(rightScreen));
-    } else {
-      const gy = groundYAt(wx, state.course.obstacles, state.course.gates);
-      if (!started) {
-        ctx.moveTo(x, gy);
-        started = true;
-      } else {
-        ctx.lineTo(x, gy);
-      }
-      x += 6;
-    }
-  }
-  ctx.stroke();
-
-  // Crater lip hazard posts & conflict chevrons (`<<<`)
+  // Crater vertical pixel walls, alternating hazard blocks, and bitmap `<<<`
   for (const crater of craters) {
-    const lx = crater.x - camX;
-    const rx = crater.x + crater.width - camX;
-    for (const edgeX of [lx - 4, rx]) {
-      ctx.fillStyle = pal.coral;
-      ctx.strokeStyle = pal.ink;
-      ctx.lineWidth = 2;
-      ctx.fillRect(edgeX, GROUND_Y - 8, 6, 8);
-      ctx.strokeRect(edgeX, GROUND_Y - 8, 6, 8);
+    const lx = snap(crater.x - camX);
+    const rx = snap(crater.x + crater.width - camX);
+    pxRect(ctx, lx - PX, GROUND_Y, PX * 2, 18, border);
+    pxRect(ctx, rx - PX, GROUND_Y, PX * 2, 18, border);
+
+    // 8-bit warning blocks on crater rims
+    pxFrame(ctx, lx - 8, GROUND_Y - 10, 8, 10, pal.gold, border);
+    pxFrame(ctx, rx, GROUND_Y - 10, 8, 10, pal.gold, border);
+
+    drawBitmapText(
+      ctx,
+      '<<<',
+      (lx + rx) * 0.5 - 16,
+      GROUND_Y + 14,
+      2,
+      pal.ruby,
+    );
+  }
+
+  // Scrolling pixel pebbles in regolith to give crisp 8-bit sense of speed
+  const pebbleShift = reducedMotion ? 0 : Math.floor(camX / PX) * PX;
+  for (let px = -((pebbleShift) % 48); px < WORLD_WIDTH; px += 48) {
+    const wx = camX + px;
+    const inCrater = craters.some((c) => wx >= c.x - 8 && wx <= c.x + c.width + 8);
+    if (!inCrater) {
+      pxRect(ctx, px, GROUND_Y + 8, 6, 4, pal.pebble);
+      pxRect(ctx, px + 22, GROUND_Y + 22, 8, 4, pal.pebble);
     }
-    ctx.fillStyle = pal.ruby;
-    ctx.font = 'bold 10px ui-monospace, Consolas, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('<<<', (lx + rx) * 0.5, GROUND_Y + 15);
   }
 }
 
-function drawGatesAndObstacles(ctx, state, pal) {
-  const camX = state.cameraX;
+function drawPixelGatesAndObstacles(ctx, state, pal, dark) {
+  const camX = snap(state.cameraX);
+  const border = dark ? pal.outlineLight : pal.ink;
 
-  // Checkpoint gates
+  // 8-bit Checkpoint Signposts & Checkered Goal Arch (E, J, O, T, Z)
   for (const gate of state.course.gates) {
-    const sx = gate.x - camX;
-    if (sx < -60 || sx > WORLD_WIDTH + 60) continue;
+    const sx = snap(gate.x - camX);
+    if (sx < -80 || sx > WORLD_WIDTH + 80) continue;
     const gy = groundYAt(gate.x, state.course.obstacles, state.course.gates);
 
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(sx, gy);
-    ctx.lineTo(sx, gy - 64);
-    ctx.stroke();
-
-    // Flag plate
-    const flagW = gate.isMajor ? 42 : 34;
-    ctx.fillStyle = gate.reached ? pal.mint : pal.lavender;
-    ctx.fillRect(sx, gy - 64, flagW, 24);
-    ctx.strokeRect(sx, gy - 64, flagW, 24);
-
-    ctx.fillStyle = '#2b2835';
-    ctx.font = '800 13px ui-monospace, Consolas, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(gate.ReachedLabel || (gate.reached ? `${gate.letter}✓` : gate.letter), sx + flagW * 0.5, gy - 47);
+    if (gate.isMajor) {
+      // Grand 8-bit checkered finish arch for Checkpoint E!
+      pxRect(ctx, sx - 6, gy - 84, 6, 84, border);
+      pxRect(ctx, sx + 54, gy - 84, 6, 84, border);
+      pxFrame(ctx, sx - 12, gy - 106, 78, 26, gate.reached ? pal.mint : pal.pink, border);
+      // Checkered pixel trim along top of arch
+      for (let c = 0; c < 12; c++) {
+        pxRect(
+          ctx,
+          sx - 10 + c * 6,
+          gy - 104,
+          6,
+          4,
+          c % 2 === 0 ? pal.ink : pal.paper,
+        );
+      }
+      drawBitmapText(ctx, `GOAL ${gate.letter}`, sx + 4, gy - 94, 2, pal.ink);
+    } else {
+      pxRect(ctx, sx, gy - 62, 4, 62, border);
+      pxFrame(ctx, sx + 4, gy - 62, 34, 24, gate.reached ? pal.mint : pal.lavender, border);
+      drawBitmapText(
+        ctx,
+        gate.reached ? `${gate.letter}+` : gate.letter,
+        sx + 13,
+        gy - 55,
+        2,
+        pal.ink,
+      );
+    }
   }
 
-  // Surface boulders & mines
+  // 8-bit Pixel Boulders & Mines
+  const rockColors = {
+    k: pal.ink,
+    l: pal.lavender,
+    i: pal.paper,
+    s: pal.purple,
+  };
+
   for (const obs of state.course.obstacles) {
     if (obs.destroyed || obs.kind.startsWith('crater')) continue;
-    const sx = obs.x - camX;
-    if (sx + obs.width < -20 || sx > WORLD_WIDTH + 20) continue;
-    const gy = groundYAt(obs.x + obs.width * 0.5, state.course.obstacles, state.course.gates);
+    const sx = snap(obs.x - camX);
+    if (sx + obs.width < -32 || sx > WORLD_WIDTH + 32) continue;
+    const gy = groundYAt(
+      obs.x + obs.width * 0.5,
+      state.course.obstacles,
+      state.course.gates,
+    );
 
     if (obs.kind === 'mine') {
-      const cx = sx + obs.width * 0.5;
-      ctx.fillStyle = pal.coral;
-      ctx.strokeStyle = pal.ink;
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(sx, gy);
-      ctx.lineTo(sx + 4, gy - 10);
-      ctx.lineTo(cx - 4, gy - 10);
-      ctx.lineTo(cx, gy - 17);
-      ctx.lineTo(cx + 4, gy - 10);
-      ctx.lineTo(sx + obs.width - 4, gy - 10);
-      ctx.lineTo(sx + obs.width, gy);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#2b2835';
-      ctx.font = 'bold 9px ui-monospace, monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('!', cx, gy - 3);
+      pxFrame(ctx, sx, gy - 12, 22, 12, pal.pink, border);
+      pxRect(ctx, sx + 4, gy - 16, 4, 4, pal.ruby);
+      pxRect(ctx, sx + 10, gy - 18, 4, 6, pal.ruby);
+      pxRect(ctx, sx + 16, gy - 16, 4, 4, pal.ruby);
+      drawBitmapText(ctx, '!', sx + 8, gy - 11, 2, pal.ink);
       continue;
     }
 
-    // Faceted lunar boulder (`rock-small` or `rock-tall`)
-    const topY = gy - obs.height;
-    ctx.fillStyle = obs.kind === 'rock-tall' ? pal.lavender : pal.ivory;
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(sx + 2, gy);
-    ctx.lineTo(sx, topY + obs.height * 0.45);
-    ctx.lineTo(sx + obs.width * 0.28, topY);
-    ctx.lineTo(sx + obs.width * 0.76, topY + 3);
-    ctx.lineTo(sx + obs.width, topY + obs.height * 0.5);
-    ctx.lineTo(sx + obs.width - 2, gy);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Non-color damage crack when tall rock has taken 1 hit
-    if (obs.hp < obs.maxHp) {
-      ctx.strokeStyle = pal.ruby;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(sx + obs.width * 0.45, topY + 2);
-      ctx.lineTo(sx + obs.width * 0.35, topY + obs.height * 0.5);
-      ctx.lineTo(sx + obs.width * 0.6, gy - 4);
-      ctx.stroke();
+    if (obs.kind === 'rock-tall') {
+      drawSprite(ctx, ROCK_TALL_MAP, sx, gy - 32, rockColors, PX);
+      if (obs.hp < obs.maxHp) {
+        // Stepped 8-bit damage crack
+        pxRect(ctx, sx + 14, gy - 28, 4, 8, pal.ruby);
+        pxRect(ctx, sx + 10, gy - 20, 4, 8, pal.ruby);
+        pxRect(ctx, sx + 14, gy - 12, 4, 8, pal.ruby);
+      }
+    } else {
+      drawSprite(ctx, ROCK_SMALL_MAP, sx, gy - 22, rockColors, PX);
     }
   }
 }
 
-function drawBuggy(ctx, state, pal, reducedMotion) {
+// Draws canonical Pixel Mona sitting prominently in the open-top 8-bit 6-wheel rover!
+function drawRoverAndMona(ctx, state, pal, reducedMotion) {
   if (state.invulnTimer > 0 && Math.floor(state.invulnTimer * 12) % 2 === 1) {
     return;
   }
-  const bx = state.buggy.screenX;
-  const by = state.buggy.y;
 
-  ctx.save();
-  ctx.translate(bx, by - 14);
-  if (!reducedMotion) {
-    ctx.rotate(state.buggy.pitch);
-  }
+  const bx = snap(state.buggy.screenX);
+  // Subtle airborne lift tilt via stepped pixel offset (keeps crisp integer pixels, no blur!)
+  const bodyLift = !state.buggy.grounded ? -2 : 0;
+  const by = snap(state.buggy.y);
 
-  // Boost exhaust plume
+  const animFrame = reducedMotion ? 0 : Math.floor(state.buggy.wheelPhase * 0.6) % 2;
+
+  // 1. Boost 8-bit pixel thruster flame behind rover
   if (state.gearIndex === 2 && state.status === 'playing') {
-    ctx.fillStyle = pal.coral;
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-27, 2);
-    ctx.lineTo(-39, -3);
-    ctx.lineTo(-35, 3);
-    ctx.lineTo(-41, 7);
-    ctx.lineTo(-27, 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    const flameLen = animFrame === 0 ? 14 : 10;
+    pxRect(ctx, bx - 34 - flameLen, by - 20 + bodyLift, flameLen, 8, pal.gold);
+    pxRect(ctx, bx - 30 - flameLen / 2, by - 18 + bodyLift, flameLen / 2, 4, pal.ruby);
   }
 
-  // Upward anti-air turret on rollbar
-  ctx.fillStyle = pal.commit;
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 2;
-  ctx.fillRect(-8, -18, 7, 8);
-  ctx.strokeRect(-8, -18, 7, 8);
+  // 2. Canonical Pixel Mona in the open cockpit (46x28 px — tall ears, wide ivory face,
+  //    vertical eyes, peach blush, cute mouth, and waving Octocat tentacle!)
+  const monaMap = animFrame === 0 ? MONA_PILOT_A : MONA_PILOT_B;
+  drawSprite(
+    ctx,
+    monaMap,
+    bx - 22,
+    by - 50 + bodyLift,
+    {
+      k: '#34313e',
+      i: '#fffdf4',
+      c: '#ffb7a5',
+      q: '#96dce2',
+    },
+    PX,
+  );
 
-  // Pixel Mona in the open lunar cockpit
-  drawPixelMap(ctx, MONA_SPRITE, -5, -25, 2, {
-    k: '#2b2835',
-    i: '#fffdf4',
-    c: '#ffb7a5',
-    m: '#c5e7d8',
-  });
+  // 3. Rear deck upward anti-air plasma turret (behind Mona so her face is 100% clear)
+  pxFrame(ctx, bx - 30, by - 30 + bodyLift, 10, 10, pal.aqua, '#34313e');
+  pxRect(ctx, bx - 27, by - 34 + bodyLift, 4, 4, pal.leaf);
 
-  // Translucent mint windscreen
-  ctx.fillStyle = pal.mint;
-  ctx.beginPath();
-  ctx.moveTo(12, -14);
-  ctx.lineTo(22, -4);
-  ctx.lineTo(12, -4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  // 4. Open-top 8-bit candy-pink & lavender 6-wheel rover chassis
+  pxFrame(ctx, bx - 34, by - 22 + bodyLift, 68, 12, pal.pink, '#34313e');
+  // Top highlight & side panel pixel trim
+  pxRect(ctx, bx - 30, by - 20 + bodyLift, 58, 2, pal.peach);
+  pxRect(ctx, bx - 18, by - 16 + bodyLift, 36, 4, pal.lavender);
 
-  // Main buggy chassis
-  ctx.fillStyle = '#6f5a9a';
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 2.4;
-  ctx.beginPath();
-  ctx.roundRect(-26, -5, 52, 12, 5);
-  ctx.fill();
-  ctx.stroke();
+  // 5. Front pixel laser cannon on bumper
+  pxFrame(ctx, bx + 32, by - 20 + bodyLift, 8, 8, pal.gold, '#34313e');
+  pxRect(ctx, bx + 40, by - 18 + bodyLift, 4, 4, pal.ruby);
 
-  // Lavender side stripe
-  ctx.fillStyle = '#ded4f1';
-  ctx.fillRect(-18, -2, 34, 4);
-
-  // Forward coral laser cannon
-  ctx.fillStyle = pal.coral;
-  ctx.fillRect(23, -3, 8, 5);
-  ctx.strokeRect(23, -3, 8, 5);
-
-  // Three articulated suspension wheels
-  for (const [idx, wx] of [-17, 0, 17].entries()) {
+  // 6. Three chunky 14x14 pixel wheels on independent bouncing pixel suspension struts
+  const wheelMap = animFrame === 0 ? WHEEL_A : WHEEL_B;
+  const wheelColors = { k: '#34313e', i: '#fffdf4' };
+  for (const [idx, wxOff] of [-22, 0, 22].entries()) {
     const bounce =
       reducedMotion || !state.buggy.grounded
         ? 0
-        : Math.sin(state.buggy.wheelPhase + idx * 1.7) * 1.6;
-    const wy = 9 + bounce;
+        : Math.round(Math.sin(state.buggy.wheelPhase + idx * 1.8)) * PX;
+    const wy = by - 14 + bounce;
 
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(wx * 0.7, 5);
-    ctx.lineTo(wx, wy);
-    ctx.stroke();
-
-    ctx.fillStyle = '#2b2835';
-    ctx.beginPath();
-    ctx.arc(wx, wy, 6.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = pal.ivory;
-    ctx.beginPath();
-    ctx.arc(wx, wy, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    // Suspension strut pixels
+    pxRect(ctx, bx + wxOff - 2, by - 12 + bodyLift, 4, 6, '#34313e');
+    drawSprite(ctx, wheelMap, bx + wxOff - 7, wy, wheelColors, PX);
   }
-
-  ctx.restore();
 }
 
-function drawAerialAndProjectiles(ctx, state, pal) {
-  const camX = state.cameraX;
+function drawAerialAndProjectiles(ctx, state, pal, reducedMotion) {
+  const camX = snap(state.cameraX);
 
-  // Player laser & plasma bolts
+  // 8-bit pixel laser & upward plasma bolts
   for (const shot of state.shots) {
-    const sx = shot.x - camX;
+    const sx = snap(shot.x - camX);
+    const sy = snap(shot.y);
     if (shot.kind === 'forward') {
-      ctx.fillStyle = pal.ruby;
-      ctx.strokeStyle = pal.ink;
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(sx - 8, shot.y - 2.5, 16, 5);
-      ctx.strokeRect(sx - 8, shot.y - 2.5, 16, 5);
+      pxFrame(ctx, sx - 10, sy - 4, 20, 8, pal.ruby, '#34313e');
+      pxRect(ctx, sx - 6, sy - 2, 12, 2, pal.paper);
     } else {
-      ctx.fillStyle = pal.commit;
-      ctx.strokeStyle = pal.ink;
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(sx - 2.5, shot.y - 8, 5, 14);
-      ctx.strokeRect(sx - 2.5, shot.y - 8, 5, 14);
+      pxFrame(ctx, sx - 4, sy - 10, 8, 18, pal.aqua, '#34313e');
+      pxRect(ctx, sx - 2, sy - 6, 4, 10, pal.paper);
     }
   }
 
-  // Overhead Bug UFO saucers
+  // Left-to-right 8-bit Bug Saucers passing overhead
+  const ufoFrame = reducedMotion ? 0 : Math.floor(state.elapsed * 6) % 2;
   for (const ufo of state.ufos) {
-    const ux = ufo.screenX;
-    const uy = ufo.y;
-
-    ctx.save();
-    ctx.translate(ux, uy);
-
-    // Bug antennae
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-6, -9);
-    ctx.lineTo(-11, -16);
-    ctx.moveTo(6, -9);
-    ctx.lineTo(11, -16);
-    ctx.stroke();
-
-    // Bug legs
-    ctx.beginPath();
-    for (const lx of [-12, -4, 4, 12]) {
-      ctx.moveTo(lx, 6);
-      ctx.lineTo(lx + (lx < 0 ? -3 : 3), 12);
-    }
-    ctx.stroke();
-
-    // Mint dome
-    ctx.fillStyle = pal.mint;
-    ctx.beginPath();
-    ctx.arc(0, -3, 11, Math.PI, 0);
-    ctx.fill();
-    ctx.stroke();
-
-    // Saucer hull (coral for scout, gold-trimmed lavender for bomber)
-    ctx.fillStyle = ufo.kind === 'bomber' ? pal.gold : pal.coral;
-    ctx.beginPath();
-    ctx.ellipse(0, 2, 21, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Portholes
-    ctx.fillStyle = pal.ivory;
-    for (const px of [-9, 0, 9]) {
-      ctx.beginPath();
-      ctx.arc(px, 2, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.restore();
+    const ux = snap(ufo.screenX - 20);
+    const uy = snap(ufo.y - 12);
+    drawSprite(
+      ctx,
+      ufoFrame === 0 ? UFO_SPRITE_A : UFO_SPRITE_B,
+      ux,
+      uy,
+      {
+        k: '#34313e',
+        q: pal.aqua,
+        p: ufo.kind === 'bomber' ? pal.gold : pal.pink,
+        i: pal.paper,
+      },
+      PX,
+    );
   }
 
-  // Falling regression bombs
+  // Slow-drifting blinking 8-bit saucer flares
+  const blink = !reducedMotion && Math.floor(state.elapsed * 10) % 2 === 0;
   for (const bomb of state.bombs) {
-    const sx = bomb.x - camX;
-    ctx.fillStyle = bomb.carvesCrater ? pal.gold : pal.coral;
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(sx, bomb.y, 5.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(sx - 4, bomb.y - 5);
-    ctx.lineTo(sx + 4, bomb.y - 5);
-    ctx.lineTo(sx, bomb.y - 10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    const sx = snap(bomb.x - camX);
+    const sy = snap(bomb.y);
+    pxFrame(ctx, sx - 6, sy - 6, 12, 12, blink ? pal.gold : pal.pink, '#34313e');
+    pxRect(ctx, sx - 2, sy - 10, 4, 4, '#34313e');
   }
 
-  // Explosion & dust particles
+  // Chunky 8-bit square explosion pixels
   for (const p of state.particles) {
-    const sx = p.x - camX;
-    const alpha = Math.max(0, p.life / p.maxLife);
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = pal[p.colorKind] || pal.coral;
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 1.5;
-    ctx.fillRect(sx - 3, p.y - 3, 6, 6);
-    ctx.strokeRect(sx - 3, p.y - 3, 6, 6);
-    ctx.restore();
+    const sx = snap(p.x - camX);
+    const sy = snap(p.y);
+    const size = p.life > p.maxLife * 0.5 ? 8 : 6;
+    const fill =
+      p.colorKind === 'ruby'
+        ? pal.ruby
+        : p.colorKind === 'lavender'
+          ? pal.lavender
+          : p.colorKind === 'mint'
+            ? pal.aqua
+            : pal.gold;
+    pxFrame(ctx, sx - size / 2, sy - size / 2, size, size, fill, '#34313e');
   }
 }
 
-function drawCanvasHudStrip(ctx, state, pal) {
-  // Overhead UFO alert pill
+function drawPixelHudBezel(ctx, state, pal, dark) {
+  const border = dark ? pal.outlineLight : pal.ink;
+  const textCol = dark ? pal.paper : pal.ink;
+
+  // Overhead UFO alert banner in upper-left
   if (state.ufos.length > 0) {
-    ctx.fillStyle = pal.coral;
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(14, 12, 146, 24, 12);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#2b2835';
-    ctx.font = '800 11px ui-monospace, Consolas, monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`▲ BUGS OVERHEAD (${state.ufos.length})`, 24, 28);
+    pxFrame(ctx, 12, 10, 152, 22, pal.pink, border);
+    drawBitmapText(ctx, `BUGS ${state.ufos.length}`, 22, 16, 2, pal.ink);
+    drawBitmapText(ctx, '>>>', 110, 16, 2, pal.ruby);
   }
 
-  // Gear pill in upper-right of sky
+  // Gear speed box in upper-right
   const gear = GEARS[state.gearIndex];
-  ctx.fillStyle = pal.radarBg;
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(WORLD_WIDTH - 134, 12, 120, 24, 12);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = pal.ink;
-  ctx.font = '800 11px ui-monospace, Consolas, monospace';
-  ctx.textAlign = 'center';
-  const bars = '▮'.repeat(state.gearIndex + 1) + '▯'.repeat(2 - state.gearIndex);
-  ctx.fillText(`${bars} ${gear.label}`, WORLD_WIDTH - 74, 28);
+  pxFrame(ctx, WORLD_WIDTH - 134, 10, 122, 22, pal.hudBg, border);
+  for (let g = 0; g < 3; g++) {
+    pxFrame(
+      ctx,
+      WORLD_WIDTH - 126 + g * 12,
+      15,
+      10,
+      12,
+      g <= state.gearIndex ? pal.mint : pal.skyBand,
+      border,
+    );
+  }
+  drawBitmapText(ctx, gear.label, WORLD_WIDTH - 84, 16, 2, textCol);
 
-  // Bottom sector checkpoint radar strip (`A — B — C — D — E`)
-  const barX = 24;
-  const barY = 326;
-  const barW = WORLD_WIDTH - 48;
-  ctx.fillStyle = pal.radarBg;
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(barX, barY, barW, 24, 8);
-  ctx.fill();
-  ctx.stroke();
+  // Bottom 8-bit A-B-C-D-E Sector Progress Radar Strip
+  const barX = 20;
+  const barY = 328;
+  const barW = WORLD_WIDTH - 40;
+  pxFrame(ctx, barX, barY, barW, 24, pal.hudBg, border);
+
+  drawBitmapText(ctx, state.course.sectorName, barX + 10, barY + 7, 2, textCol);
 
   const letters = sectorCheckpointLetters(state.checkpointIndex);
-  const trackLeft = barX + 58;
+  const trackLeft = barX + 86;
   const trackRight = barX + barW - 22;
   const trackW = trackRight - trackLeft;
-
-  ctx.fillStyle = pal.ink;
-  ctx.font = '800 10px ui-monospace, Consolas, monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(state.course.sectorName.toUpperCase(), barX + 10, barY + 16);
-
-  // Track line + progress fill
   const ratio = Math.max(0, Math.min(1, state.buggy.worldX / Math.max(1, state.course.length)));
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(trackLeft, barY + 12);
-  ctx.lineTo(trackRight, barY + 12);
-  ctx.stroke();
 
-  ctx.strokeStyle = pal.commit;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(trackLeft, barY + 12);
-  ctx.lineTo(trackLeft + trackW * ratio, barY + 12);
-  ctx.stroke();
+  pxRect(ctx, trackLeft, barY + 11, trackW, 4, border);
+  pxRect(ctx, trackLeft, barY + 11, trackW * ratio, 4, pal.leaf);
 
   letters.forEach((letter, idx) => {
-    const lx = trackLeft + (trackW * idx) / Math.max(1, letters.length - 1);
+    const lx = snap(trackLeft + (trackW * idx) / Math.max(1, letters.length - 1));
     const reached = state.course.gates[idx]?.reached;
-    ctx.fillStyle = reached ? pal.commit : pal.ivory;
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.arc(lx, barY + 12, 7.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#2b2835';
-    ctx.font = '800 9px ui-monospace, Consolas, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(letter, lx, barY + 15.5);
+    pxFrame(ctx, lx - 8, barY + 4, 16, 16, reached ? pal.mint : pal.paper, border);
+    drawBitmapText(ctx, letter, lx - 3, barY + 7, 2, pal.ink);
   });
 
-  // Live buggy marker on radar
-  const markerX = trackLeft + trackW * ratio;
-  ctx.fillStyle = pal.ruby;
-  ctx.beginPath();
-  ctx.moveTo(markerX, barY + 3);
-  ctx.lineTo(markerX - 4, barY - 2);
-  ctx.lineTo(markerX + 4, barY - 2);
-  ctx.closePath();
-  ctx.fill();
+  // Live pixel rover marker on radar
+  const markerX = snap(trackLeft + trackW * ratio);
+  pxRect(ctx, markerX - 4, barY - 2, 8, 6, pal.ruby);
 }
 
 export function renderGame(canvas, state, options = {}) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const theme = options.theme === 'dark' ? 'dark' : 'light';
+  const dark = options.theme === 'dark';
   const reducedMotion = Boolean(options.reducedMotion);
-  const pal = PALETTES[theme];
+  const pal = dark ? PALETTES.dark : PALETTES.light;
 
-  const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
-  const targetW = Math.round(WORLD_WIDTH * dpr);
-  const targetH = Math.round(WORLD_HEIGHT * dpr);
-  if (canvas.width !== targetW || canvas.height !== targetH) {
-    canvas.width = targetW;
-    canvas.height = targetH;
+  if (canvas.width !== WORLD_WIDTH || canvas.height !== WORLD_HEIGHT) {
+    canvas.width = WORLD_WIDTH;
+    canvas.height = WORLD_HEIGHT;
   }
+  ctx.imageSmoothingEnabled = false;
 
   ctx.save();
-  ctx.scale(dpr, dpr);
-
-  // Subtle crash shake only when reduced motion is off
   if (state.status === 'crashing' && !reducedMotion) {
-    const mag = state.crashTimer * 6;
-    ctx.translate(
-      Math.sin(state.crashTimer * 55) * mag,
-      Math.cos(state.crashTimer * 43) * mag,
-    );
+    const shake = Math.round(Math.sin(state.crashTimer * 50) * 2) * PX;
+    ctx.translate(shake, 0);
   }
 
-  drawSkyAndParallax(ctx, state, pal, reducedMotion);
-  drawTerrainAndCraters(ctx, state, pal);
-  drawGatesAndObstacles(ctx, state, pal);
+  drawSkyAndParallax(ctx, state, pal, reducedMotion, dark);
+  drawPixelRoadAndCraters(ctx, state, pal, reducedMotion, dark);
+  drawPixelGatesAndObstacles(ctx, state, pal, dark);
   if (state.status !== 'crashing' || state.crashTimer > 0.35) {
-    drawBuggy(ctx, state, pal, reducedMotion);
+    drawRoverAndMona(ctx, state, pal, reducedMotion);
   }
-  drawAerialAndProjectiles(ctx, state, pal);
-  drawCanvasHudStrip(ctx, state, pal);
-
-  // Sector clear celebration banner on canvas
-  if (state.status === 'sector-clear' && state.lastSectorBonus) {
-    const b = state.lastSectorBonus;
-    ctx.fillStyle = pal.radarBg;
-    ctx.strokeStyle = pal.ink;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.roundRect(150, 86, 340, 114, 14);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = pal.ink;
-    ctx.textAlign = 'center';
-    ctx.font = '800 18px "Mona Sans", "Segoe UI", sans-serif';
-    ctx.fillText(`CHECKPOINT ${b.letter} — SECTOR CLEAR!`, 320, 118);
-    ctx.font = '700 13px ui-monospace, Consolas, monospace';
-    ctx.fillText(`TIME ${b.seconds.toFixed(1)}s  (PAR ${b.parSeconds}s)`, 320, 148);
-    ctx.fillStyle = pal.lavenderDeep;
-    ctx.font = '800 15px ui-monospace, Consolas, monospace';
-    ctx.fillText(`SECTOR BONUS +${b.bonus} PTS`, 320, 176);
-  }
+  drawAerialAndProjectiles(ctx, state, pal, reducedMotion);
+  drawPixelHudBezel(ctx, state, pal, dark);
 
   ctx.restore();
 }

@@ -3,6 +3,7 @@ import {
   advanceToNextSector,
   createGameState,
   fireWeapons,
+  replayCurrentSector,
   requestJump,
   shiftGear,
   startGame,
@@ -48,6 +49,8 @@ const helpBtn = document.getElementById('help');
 const pauseBtn = document.getElementById('pause');
 const restartBtn = document.getElementById('restart');
 const primaryBtn = document.getElementById('primary');
+const replaySectorBtn = document.getElementById('replay-sector');
+const overlayAudioBtn = document.getElementById('overlay-audio');
 
 const stageEl = document.getElementById('stage');
 const canvas = document.getElementById('canvas');
@@ -55,6 +58,13 @@ const overlayEl = document.getElementById('overlay');
 const overlayKicker = document.getElementById('overlay-kicker');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayDetail = document.getElementById('overlay-detail');
+const statsGrid = document.getElementById('stats-grid');
+const statTime = document.getElementById('stat-time');
+const statUfos = document.getElementById('stat-ufos');
+const statRocks = document.getElementById('stat-rocks');
+const statJumps = document.getElementById('stat-jumps');
+const statAccuracy = document.getElementById('stat-accuracy');
+const statBonus = document.getElementById('stat-bonus');
 const announcerEl = document.getElementById('announcer');
 
 const checkpointEl = document.getElementById('checkpoint');
@@ -107,6 +117,8 @@ function syncAudioButton() {
   const on = audio.isEnabled();
   audioBtn.setAttribute('aria-pressed', String(on));
   audioBtn.textContent = on ? 'Audio: on' : 'Audio: off';
+  overlayAudioBtn.setAttribute('aria-pressed', String(on));
+  overlayAudioBtn.textContent = on ? 'Sound: on (M)' : 'Sound: off (M)';
 }
 
 function announce(message) {
@@ -119,20 +131,49 @@ function announce(message) {
 function syncOverlay() {
   if (state.status === 'ready') {
     overlayEl.hidden = false;
+    statsGrid.hidden = true;
+    replaySectorBtn.hidden = true;
+    overlayAudioBtn.hidden = false;
     overlayKicker.textContent = `CHECKPOINT ${state.checkpointLetter} — ${state.course.sectorName.toUpperCase()} BRANCH`;
     overlayTitle.textContent = 'Patrol the lunar ridge.';
     overlayDetail.textContent =
-      'Leap merge-conflict craters, blast boulders ahead and bug saucers overhead, and race through checkpoints A to E for a sector time bonus.';
+      'Leap merge-conflict craters, blast boulders ahead and bug saucers flying overhead, and clear checkpoints A to E.';
     primaryBtn.innerHTML = 'Start patrol <span aria-hidden="true">→</span>';
   } else if (state.status === 'paused') {
     overlayEl.hidden = false;
+    statsGrid.hidden = true;
+    replaySectorBtn.hidden = true;
+    overlayAudioBtn.hidden = false;
     overlayKicker.textContent = `PAUSED AT POINT ${state.checkpointLetter}`;
     overlayTitle.textContent = 'Patrol paused.';
     overlayDetail.textContent =
       'Press Space, Enter, or P to resume driving from your current position.';
     primaryBtn.innerHTML = 'Resume patrol <span aria-hidden="true">→</span>';
+  } else if (state.status === 'sector-clear' && state.lastSectorBonus) {
+    const s = state.lastSectorBonus;
+    overlayEl.hidden = false;
+    statsGrid.hidden = false;
+    replaySectorBtn.hidden = false;
+    overlayAudioBtn.hidden = true;
+    replaySectorBtn.textContent = `Replay ${s.sectorRange}`;
+    overlayKicker.textContent = `STAGE ${s.sectorRange} COMPLETE — ${s.sectorName.toUpperCase()} BRANCH`;
+    overlayTitle.textContent =
+      s.flawlessBonus > 0
+        ? `Flawless patrol! +${s.bonus} pts`
+        : `Checkpoint ${s.letter} reached! +${s.bonus} pts`;
+    overlayDetail.textContent = `Target par ${s.parSeconds}s · ${s.livesRemaining} buggies ready · Total score ${String(s.totalScore).padStart(5, '0')}`;
+    statTime.textContent = `${s.seconds.toFixed(1)}s / ${s.parSeconds}s`;
+    statUfos.textContent = `${s.ufosDestroyed} / ${s.ufosSpawned}`;
+    statRocks.textContent = String(s.rocksDestroyed);
+    statJumps.textContent = String(s.hazardsJumped);
+    statAccuracy.textContent = `${s.accuracyPct}% (${s.shotsHit}/${s.shotsFired})`;
+    statBonus.textContent = `+${s.bonus}`;
+    primaryBtn.innerHTML = 'Next stage <span aria-hidden="true">→</span>';
   } else if (state.status === 'gameover') {
     overlayEl.hidden = false;
+    statsGrid.hidden = true;
+    replaySectorBtn.hidden = true;
+    overlayAudioBtn.hidden = false;
     overlayKicker.textContent = `REACHED CHECKPOINT ${state.checkpointLetter}`;
     overlayTitle.textContent = `Patrol over — ${String(state.score).padStart(5, '0')} pts`;
     overlayDetail.textContent = `Stopped by ${state.crashReason || 'lunar hazard'}. Best score: ${String(state.bestScore).padStart(5, '0')}.`;
@@ -187,9 +228,12 @@ function drainEvents() {
     } else if (ev.type === 'checkpoint') {
       announce(`Checkpoint ${ev.checkpoint} reached! Score ${state.score}.`);
     } else if (ev.type === 'sector-clear') {
+      const st = ev.stats;
       announce(
-        `Checkpoint ${ev.checkpoint} sector cleared in ${ev.seconds.toFixed(1)} seconds! Bonus ${ev.bonus} points. Score ${state.score}.`,
+        `Stage ${st.sectorRange} cleared in ${ev.seconds.toFixed(1)} seconds! UFOs eliminated ${st.ufosDestroyed} of ${st.ufosSpawned}, boulders blasted ${st.rocksDestroyed}, bonus ${ev.bonus} points. Total score ${state.score}.`,
       );
+      syncDom();
+      primaryBtn.focus({ preventScroll: true });
     } else if (ev.type === 'respawn') {
       announce(`${ev.lives} buggies left. Respawning at Checkpoint ${ev.checkpoint}.`);
     } else if (ev.type === 'extra-life') {
@@ -245,6 +289,21 @@ primaryBtn.addEventListener('click', () => {
   beginOrResumePatrol();
 });
 
+replaySectorBtn.addEventListener('click', () => {
+  replayCurrentSector(state);
+  drainEvents();
+  syncDom();
+  stageEl.focus({ preventScroll: true });
+});
+
+function toggleSound() {
+  audio.setEnabled(!audio.isEnabled(), state.status === 'playing');
+  syncAudioButton();
+  announce(audio.isEnabled() ? 'Audio on.' : 'Audio muted.');
+}
+
+overlayAudioBtn.addEventListener('click', toggleSound);
+
 pauseBtn.addEventListener('click', () => {
   if (state.status === 'playing' || state.status === 'paused') {
     togglePause(state);
@@ -277,11 +336,7 @@ themeBtn.addEventListener('click', () => {
   renderGame(canvas, state, { theme: currentTheme(), reducedMotion });
 });
 
-audioBtn.addEventListener('click', () => {
-  audio.setEnabled(!audio.isEnabled(), state.status === 'playing');
-  syncAudioButton();
-  announce(audio.isEnabled() ? 'Audio on.' : 'Audio muted.');
-});
+audioBtn.addEventListener('click', toggleSound);
 
 function openHelp() {
   resumeAfterHelp = state.status === 'playing';

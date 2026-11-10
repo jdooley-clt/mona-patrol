@@ -1,34 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" shape-rendering="crispEdges">
-  <title>Pixel Mona the Octocat leaping in a six-wheel lunar patrol buggy</title>
-  <!-- Anti-air plasma bolt -->
-  <path d="M12 2h2v4h-2z" fill="#4ea870"/>
-  <!-- Forward laser pulse -->
-  <path d="M31 18h4v2h-4z" fill="#9e1940"/>
-  <!-- Mona ears & head outline -->
-  <path d="M13 5h3v2h6V5h3v4h2v7h-2v2H13v-2h-2V9h2z" fill="#2b2835"/>
-  <!-- Mona face -->
-  <path d="M13 9h12v7H13z" fill="#fffdf4"/>
-  <!-- Eyes & rosy cheeks -->
-  <path d="M15 11h2v3h-2zM21 11h2v3h-2z" fill="#2b2835"/>
-  <path d="M14 14h2v1h-2zM22 14h2v1h-2z" fill="#ffb7a5"/>
-  <!-- Rollbar anti-air turret -->
-  <path d="M9 12h4v6H9z" fill="#2b2835"/>
-  <path d="M10 13h2v4h-2z" fill="#4ea870"/>
-  <!-- Mint windscreen -->
-  <path d="M25 13h2v2h2v3h-4z" fill="#2b2835"/>
-  <path d="M25 14h1v1h2v2h-3z" fill="#c5e7d8"/>
-  <!-- Boost flame -->
-  <path d="M2 20h4v3H2z" fill="#ffb7a5"/>
-  <path d="M1 21h2v1H1z" fill="#9e1940"/>
-  <!-- Armored buggy hull -->
-  <path d="M5 17h25v8H5z" fill="#2b2835"/>
-  <path d="M6 18h23v6H6z" fill="#6f5a9a"/>
-  <path d="M9 20h16v2H9z" fill="#ded4f1"/>
-  <!-- Front coral blaster -->
-  <path d="M29 19h3v3h-3z" fill="#2b2835"/>
-  <path d="M29 20h2v1h-2z" fill="#ffb7a5"/>
-  <!-- Six-wheel suspension struts & tires -->
-  <path d="M8 25h2v2H8zM16 25h2v2h-2zM24 25h2v2h-2z" fill="#2b2835"/>
-  <path d="M6 27h6v5H6zM14 27h6v5h-6zM22 27h6v5h-6z" fill="#2b2835"/>
-  <path d="M8 29h2v1H8zM16 29h2v1h-2zM24 29h2v1h-2z" fill="#fffdf4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 38 38" shape-rendering="crispEdges">
+  <title>8-bit pixel Mona the Octocat driving a six-wheel lunar patrol rover</title>
+  <!-- Canonical Pixel Mona: tall ears, wide ivory face, vertical eyes, rosy cheeks, waving tentacle -->
+  <path d="M12 3h3v2h10V3h3v2h2v10h-2v2h-2v3h-9v-2h-4v2H9v-2H7v-4h3v2h3v-1h-2V5h2z" fill="#34313e"/>
+  <path d="M13 7h14v8H13z" fill="#fffdf4"/>
+  <path d="M15 9h2v4h-2zM23 9h2v4h-2zM19 13h2v1h-2z" fill="#34313e"/>
+  <path d="M14 13h2v1h-2zM24 13h2v1h-2z" fill="#ffb7a5"/>
+  <!-- Aqua pixel steering wheel & rear anti-air turret -->
+  <path d="M27 17h3v3h-3z" fill="#96dce2"/>
+  <path d="M5 16h5v5H5z" fill="#34313e"/>
+  <path d="M6 17h3v3H6z" fill="#96dce2"/>
+  <path d="M7 14h1v2H7z" fill="#568773"/>
+  <!-- Boost pixel flame -->
+  <path d="M1 22h3v3H1z" fill="#f5cc66"/>
+  <path d="M0 23h2v1H0z" fill="#b11f4b"/>
+  <!-- Candy-pink & lavender 8-bit rover chassis -->
+  <path d="M4 20h29v7H4z" fill="#34313e"/>
+  <path d="M5 21h27v5H5z" fill="#ed9eb7"/>
+  <path d="M6 21h24v1H6z" fill="#ffb7a5"/>
+  <path d="M11 23h15v2H11z" fill="#ded4f1"/>
+  <!-- Front pixel laser emitter -->
+  <path d="M33 21h3v4h-3z" fill="#34313e"/>
+  <path d="M33 22h2v2h-2z" fill="#f5cc66"/>
+  <path d="M36 22h2v2h-2z" fill="#b11f4b"/>
+  <!-- Three chunky 8-bit pixel wheels on struts -->
+  <path d="M8 27h2v2H8zM18 27h2v2h-2zM28 27h2v2h-2z" fill="#34313e"/>
+  <path d="M6 29h6v6H6zM16 29h6v6h-6zM26 29h6v6h-6z" fill="#34313e"/>
+  <path d="M8 31h2v2H8zM18 31h2v2h-2zM28 31h2v2h-2z" fill="#fffdf4"/>
 </svg>
