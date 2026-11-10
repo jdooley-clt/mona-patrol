@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <title>Mona Patrol lunar ridge, merge-conflict crater, checkpoint beacon, and bug saucers</title>
+  <defs>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="1.2" fill="#d9d1be"/>
+    </pattern>
+    <g id="bug-saucer">
+      <path d="M-8-10L-14-18M8-10L14-18M-15 7l-4 7M-5 8l-2 7M5 8l2 7M15 7l4 7" stroke="#2b2835" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M-13-3a13 12 0 0 1 26 0z" fill="#c5e7d8" stroke="#2b2835" stroke-width="2.6" stroke-linejoin="round"/>
+      <ellipse cx="0" cy="2" rx="24" ry="8" fill="#ffb7a5" stroke="#2b2835" stroke-width="2.8"/>
+      <circle cx="-10" cy="2" r="2.5" fill="#fffdf4"/>
+      <circle cx="0" cy="2" r="2.5" fill="#fffdf4"/>
+      <circle cx="10" cy="2" r="2.5" fill="#fffdf4"/>
+    </g>
+    <g id="star">
+      <path d="M-6-1.5h4.5V-6h3v4.5H6v3H1.5V6h-3V1.5H-6z" fill="#fffdf4"/>
+    </g>
+  </defs>
+
+  <rect width="640" height="360" fill="#f7f4e9"/>
+  <rect width="640" height="280" fill="url(#dots)"/>
+
+  <use href="#star" x="86" y="48"/>
+  <use href="#star" x="322" y="34"/>
+  <use href="#star" x="548" y="54"/>
+
+  <!-- Far lavender lunar mesas -->
+  <path d="M0 286V208c54-28 112-32 168-8s108 26 170-6 122-34 182-6 84 22 120 8v90z" fill="#ded4f1" stroke="#2b2835" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Mid mint repository ridges and commit towers -->
+  <path d="M126 232v-22M496 226v-24" stroke="#2b2835" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="126" cy="205" r="5.5" fill="#4ea870" stroke="#2b2835" stroke-width="2.5"/>
+  <circle cx="496" cy="197" r="5.5" fill="#4ea870" stroke="#2b2835" stroke-width="2.5"/>
+  <path d="M0 286v-44c66-16 132-8 196 6s134 14 206-6 154-20 238 2v42z" fill="#c5e7d8" stroke="#2b2835" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Checkpoint B beacon on right -->
+  <path d="M556 276v-68" stroke="#2b2835" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="556" y="208" width="38" height="25" rx="3" fill="#c5e7d8" stroke="#2b2835" stroke-width="2.8"/>
+  <path fill-rule="evenodd" d="M569 213h9v3h2v3h-2v2h2v4h-2v3h-9zm3 3v3h5v-3zm0 6v3h5v-3z" fill="#2b2835"/>
+
+  <!-- Faceted lunar boulder ahead -->
+  <path d="M468 278l-3-16 10-14 18 3 8 15-2 12z" fill="#fffdf4" stroke="#2b2835" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Foreground lunar road with central merge-conflict crater -->
+  <path d="M0 360v-82c86 0 168 4 252 4l18 28 24 14 24-15 18-27c104 0 206-4 304-4v82z" fill="#ece5f8"/>
+  <path d="M0 360v-54h268l26 16 26-16h320v54z" fill="#d8cde9"/>
+  <path d="M0 278c86 0 168 4 252 4l18 28 24 14 24-15 18-27c104 0 206-4 304-4" fill="none" stroke="#2b2835" stroke-width="4" stroke-linejoin="round"/>
+
+  <!-- Crater warning posts & chevron glyphs -->
+  <rect x="244" y="272" width="8" height="10" fill="#ffb7a5" stroke="#2b2835" stroke-width="2.4"/>
+  <rect x="336" y="272" width="8" height="10" fill="#ffb7a5" stroke="#2b2835" stroke-width="2.4"/>
+  <path d="M282 294l-6 4 6 4M294 294l-6 4 6 4M306 294l-6 4 6 4" fill="none" stroke="#9e1940" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Overhead Bug UFOs + falling bomb -->
+  <use href="#bug-saucer" x="96" y="122"/>
+  <use href="#bug-saucer" x="492" y="68"/>
+  <circle cx="492" cy="118" r="6" fill="#ffb7a5" stroke="#2b2835" stroke-width="2.5"/>
+  <path d="M487 112h10l-5-7z" fill="#ffb7a5" stroke="#2b2835" stroke-width="2.2" stroke-linejoin="round"/>
+</svg>

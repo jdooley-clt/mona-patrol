@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" shape-rendering="crispEdges">
+  <title>Pixel Mona the Octocat leaping in a six-wheel lunar patrol buggy</title>
+  <!-- Anti-air plasma bolt -->
+  <path d="M12 2h2v4h-2z" fill="#4ea870"/>
+  <!-- Forward laser pulse -->
+  <path d="M31 18h4v2h-4z" fill="#9e1940"/>
+  <!-- Mona ears & head outline -->
+  <path d="M13 5h3v2h6V5h3v4h2v7h-2v2H13v-2h-2V9h2z" fill="#2b2835"/>
+  <!-- Mona face -->
+  <path d="M13 9h12v7H13z" fill="#fffdf4"/>
+  <!-- Eyes & rosy cheeks -->
+  <path d="M15 11h2v3h-2zM21 11h2v3h-2z" fill="#2b2835"/>
+  <path d="M14 14h2v1h-2zM22 14h2v1h-2z" fill="#ffb7a5"/>
+  <!-- Rollbar anti-air turret -->
+  <path d="M9 12h4v6H9z" fill="#2b2835"/>
+  <path d="M10 13h2v4h-2z" fill="#4ea870"/>
+  <!-- Mint windscreen -->
+  <path d="M25 13h2v2h2v3h-4z" fill="#2b2835"/>
+  <path d="M25 14h1v1h2v2h-3z" fill="#c5e7d8"/>
+  <!-- Boost flame -->
+  <path d="M2 20h4v3H2z" fill="#ffb7a5"/>
+  <path d="M1 21h2v1H1z" fill="#9e1940"/>
+  <!-- Armored buggy hull -->
+  <path d="M5 17h25v8H5z" fill="#2b2835"/>
+  <path d="M6 18h23v6H6z" fill="#6f5a9a"/>
+  <path d="M9 20h16v2H9z" fill="#ded4f1"/>
+  <!-- Front coral blaster -->
+  <path d="M29 19h3v3h-3z" fill="#2b2835"/>
+  <path d="M29 20h2v1h-2z" fill="#ffb7a5"/>
+  <!-- Six-wheel suspension struts & tires -->
+  <path d="M8 25h2v2H8zM16 25h2v2h-2zM24 25h2v2h-2z" fill="#2b2835"/>
+  <path d="M6 27h6v5H6zM14 27h6v5h-6zM22 27h6v5h-6z" fill="#2b2835"/>
+  <path d="M8 29h2v1H8zM16 29h2v1h-2zM24 29h2v1h-2z" fill="#fffdf4"/>
+</svg>
