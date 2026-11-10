@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; manifest-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Mona Patrol: drive Mona the Octocat's lunar buggy across merge-conflict craters, boulders, and overhead bug saucers from checkpoint A to Z.">
+  <meta property="og:title" content="Mona Patrol">
+  <meta property="og:description" content="Leap merge-conflict craters, blast bug saucers, and clear checkpoints A to Z with Mona.">
+  <meta property="og:image" content="https://jdooley-clt.github.io/mona-patrol/assets/og-image.png">
+  <title>Mona Patrol</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="Mona Patrol">
+  <meta name="theme-color" content="#f7f4e9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#22202b" media="(prefers-color-scheme: dark)">
+  <script src="./src/theme.js"></script>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./src/main.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <img class="brand-icon" src="./assets/favicon.svg" alt="" width="28" height="28">
+        <div>
+          <p class="eyebrow">LUNAR REPOSITORY ROVER</p>
+          <h1>Mona <span>Patrol</span></h1>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <a id="arcade-link" class="standalone-link" href="https://jdooley-clt.github.io/arcade/" hidden>GitHub Arcade</a>
+        <a id="source-link" class="standalone-link" href="https://github.com/jdooley-clt/mona-patrol" hidden>Source &amp; credits</a>
+        <button id="theme" class="chip" type="button" aria-pressed="false" title="Switch light or dark theme">Dark mode</button>
+        <button id="audio-toggle" class="chip" type="button" aria-pressed="false" title="Toggle synthesized audio (M)">Audio: off</button>
+        <button id="help" class="chip" type="button" aria-label="How to play and credits" title="How to play (?)">Help</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="game-shell" aria-label="Mona Patrol game">
+        <div class="hud-bar" role="region" aria-label="Patrol telemetry">
+          <div class="hud-cell">
+            <span class="label">POINT</span>
+            <strong id="checkpoint">A · MAIN</strong>
+          </div>
+          <div class="hud-cell">
+            <span class="label">BUGGIES</span>
+            <strong id="lives">▲▲▲ (3)</strong>
+          </div>
+          <div class="hud-cell">
+            <span class="label">TIME</span>
+            <strong id="timer">00.0s</strong>
+          </div>
+          <div class="hud-cell">
+            <span class="label">SCORE</span>
+            <strong id="score">00000</strong>
+          </div>
+          <div class="hud-cell">
+            <span class="label">BEST</span>
+            <strong id="best">00000</strong>
+          </div>
+          <div class="hud-actions">
+            <button id="pause" class="action-chip" type="button" aria-pressed="false" disabled title="Pause or resume (P)">Pause</button>
+            <button id="restart" class="action-chip" type="button" title="Restart patrol from Point A (R)">Restart</button>
+          </div>
+        </div>
+
+        <div class="stage" id="stage" role="region" tabindex="0"
+          data-status="ready"
+          data-checkpoint="A"
+          data-gear="cruise"
+          data-score="0"
+          data-lives="3"
+          aria-label="Mona Patrol lunar course. Press Enter or Space to start. Use Left and Right or A and D to adjust speed, Up or Space to jump, Z or X or Control to fire, P to pause, and M to mute.">
+          <canvas id="canvas" width="640" height="360"></canvas>
+
+          <div class="overlay" id="overlay">
+            <p class="eyebrow" id="overlay-kicker">CHECKPOINT A — MAIN BRANCH</p>
+            <h2 id="overlay-title">Patrol the lunar ridge.</h2>
+            <p id="overlay-detail">Leap merge-conflict craters, blast boulders ahead and bug saucers overhead, and race through checkpoints A to E for a sector time bonus.</p>
+            <div class="overlay-actions">
+              <button id="primary" class="primary" type="button">Start patrol <span aria-hidden="true">→</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="touch-deck" role="group" aria-label="Patrol controls">
+          <button id="btn-slower" class="pad-btn" type="button" aria-label="Slow down (Left arrow or A)">
+            <span class="pad-glyph" aria-hidden="true">◀</span>
+            <span class="pad-text">Slower</span>
+          </button>
+          <button id="btn-faster" class="pad-btn" type="button" aria-label="Speed up (Right arrow or D)">
+            <span class="pad-text">Faster</span>
+            <span class="pad-glyph" aria-hidden="true">▶</span>
+          </button>
+          <button id="btn-jump" class="pad-btn accent-mint" type="button" aria-label="Jump craters and rocks (Space or Up arrow)">
+            <span class="pad-glyph" aria-hidden="true">▲</span>
+            <span class="pad-text">Jump</span>
+          </button>
+          <button id="btn-fire" class="pad-btn accent-coral" type="button" aria-label="Fire forward and upward cannons (Z, X, or Control)">
+            <span class="pad-glyph" aria-hidden="true">✦</span>
+            <span class="pad-text">Fire</span>
+          </button>
+        </div>
+
+        <div class="controls-strip" aria-hidden="true">
+          <span><kbd>←</kbd><kbd>→</kbd> / <kbd>A</kbd><kbd>D</kbd> speed</span>
+          <span><kbd>Space</kbd> / <kbd>↑</kbd> jump</span>
+          <span><kbd>Z</kbd> / <kbd>X</kbd> / <kbd>Ctrl</kbd> fire</span>
+          <span><kbd>Enter</kbd> start</span>
+          <span><kbd>P</kbd> pause</span>
+          <span><kbd>M</kbd> audio</span>
+        </div>
+
+        <p class="sr-only" id="announcer" role="status" aria-live="polite"></p>
+      </section>
+
+      <footer class="site-footer">
+        <p class="credit-line">Created by Jeramiah Dooley (@jdooley-clt) for the GitHub Arcade, a cabinet created by Christina Warren (@filmgirl). Independent fan project. Not affiliated with GitHub.</p>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="help-dialog" aria-labelledby="help-title">
+    <button id="close-help" class="dialog-close" type="button" aria-label="Close instructions">×</button>
+    <p class="eyebrow">PATROL MANUAL</p>
+    <h2 id="help-title">How to play Mona Patrol</h2>
+    <p>Drive Mona's six-wheel lunar rover across fivecheckpoint sectors (<b>A–E</b>, <b>F–J</b>, <b>K–O</b>, <b>P–T</b>, and <b>U–Z</b>). Every reached checkpoint acts as a safe respawn beacon if you lose one of your three buggies.</p>
+
+    <div class="help-grid">
+      <div>
+        <h3>Keyboard</h3>
+        <p><kbd>Enter</kbd> or <kbd>Space</kbd> starts. <kbd>←</kbd> / <kbd>→</kbd> or <kbd>A</kbd> / <kbd>D</kbd> shifts between <b>Slow</b>, <b>Cruise</b>, and <b>Boost</b>. <kbd>Space</kbd>, <kbd>↑</kbd>, or <kbd>W</kbd> jumps. <kbd>Z</kbd>, <kbd>X</kbd>, or <kbd>Ctrl</kbd> fires forward and anti-air cannons together. <kbd>P</kbd> pauses and <kbd>M</kbd> toggles audio.</p>
+      </div>
+      <div>
+        <h3>Touch &amp; pointer</h3>
+        <p>Tap <b>Slower</b> or <b>Faster</b> below the screen to change rover speed, tap <b>Jump</b> to clear craters and mines, and tap or hold <b>Fire</b> to clear boulders and overhead bug saucers.</p>
+      </div>
+    </div>
+
+    <h3>Hazards &amp; scoring</h3>
+    <ul class="help-list">
+      <li><b>Merge-conflict craters (<code>&lt;&lt;&lt;</code>)</b>: cannot be shot — time your jump arc to clear them (+100 to +150 pts).</li>
+      <li><b>Lunar boulders</b>: jump over them or blast small rocks (1 hit, +100 pts) and tall fractured stacks (2 hits, +200 pts).</li>
+      <li><b>Bug saucers overhead</b>: shoot them with your upward turret (+200 to +300 pts, +500 wave clear) and intercept falling regression bombs (+100 pts).</li>
+      <li><b>Sector clear bonus</b>: finish major checkpoints (<b>E</b>, <b>J</b>, <b>O</b>, <b>T</b>, <b>Z</b>) under the 40-second par time for 1,000+ bonus points.</li>
+    </ul>
+
+    <h3>Credits</h3>
+    <p>Created by Jeramiah Dooley (@jdooley-clt) for the GitHub Arcade, a cabinet created by Christina Warren (@filmgirl). Independent fan project. Not affiliated with GitHub.</p>
+    <button id="got-it" class="primary" type="button">Back to rover <span aria-hidden="true">→</span></button>
+  </dialog>
+</body>
+</html>
