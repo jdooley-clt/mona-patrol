@@ -72,7 +72,7 @@ export function generateCourseSection(cpIndex, seed = 2026, loop = 0) {
 
   const difficulty = cpIndex + loop * 10;
   const obstacles = [];
-  let cursor = startX + 310;
+  let cursor = startX + (cpIndex === 0 && loop === 0 ? 520 : 310);
   const safeEnd = endX - 240;
 
   while (cursor < safeEnd) {

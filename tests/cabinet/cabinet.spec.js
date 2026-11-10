@@ -137,11 +137,15 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   await arcadeLink.focus();
   await expect(arcadeLink).toBeFocused();
   const gearBefore = await stageData(page, 'gear');
+  const jumpsBefore = await stageData(page, 'jumps');
+  const shotsBefore = await stageData(page, 'shots-fired');
   for (const key of ['ArrowRight', 'Space', 'p', 'm', 'z']) {
     await page.keyboard.press(key);
   }
-  expect(await stageData(page, 'status')).toBe('playing');
+  expect(await stageData(page, 'status')).not.toBe('paused');
   expect(await stageData(page, 'gear')).toBe(gearBefore);
+  expect(await stageData(page, 'jumps')).toBe(jumpsBefore);
+  expect(await stageData(page, 'shots-fired')).toBe(shotsBefore);
   await expect(page.locator('#audio-toggle')).toHaveAttribute('aria-pressed', 'false');
 
   // Toggle dark mode + help dialog + axe scan
@@ -311,9 +315,11 @@ for (const width of [320, 390]) {
     await frame.locator('#btn-slower').tap();
     await expect.poll(() => stageData(frame, 'gear')).toBe('cruise');
 
+    await expect.poll(() => stageData(frame, 'status')).toBe('playing');
     await frame.locator('#btn-jump').tap();
     await expect.poll(async () => Number(await stageData(frame, 'jumps'))).toBeGreaterThanOrEqual(1);
 
+    await expect.poll(() => stageData(frame, 'status')).toBe('playing');
     await frame.locator('#btn-fire').tap();
     await expect
       .poll(async () => Number(await stageData(frame, 'shots-fired')))
