@@ -75,6 +75,8 @@ export function createAudioController() {
   let stepIndex = 0;
   let nextStepTime = 0;
   let fanfareUntil = 0;
+  let stageTranspose = 0;
+  const STAGE_OFFSETS = [0, 2, 3, 5, 7];
   const activeVoices = new Set();
 
   function ensureContext() {
@@ -212,7 +214,7 @@ export function createAudioController() {
       scheduleOsc({
         bus: musicBus,
         type: 'square',
-        from: midiToHz(leadMidi),
+        from: midiToHz(leadMidi + stageTranspose),
         startTime: time,
         duration: STEP * 0.78,
         gain: 0.19,
@@ -225,7 +227,7 @@ export function createAudioController() {
       scheduleOsc({
         bus: musicBus,
         type: 'square',
-        from: midiToHz(harmMidi),
+        from: midiToHz(harmMidi + stageTranspose),
         startTime: time,
         duration: STEP * 0.9,
         gain: 0.1,
@@ -238,7 +240,7 @@ export function createAudioController() {
       scheduleOsc({
         bus: musicBus,
         type: 'triangle',
-        from: midiToHz(bassMidi),
+        from: midiToHz(bassMidi + stageTranspose),
         startTime: time,
         duration: STEP * 1.65,
         gain: 0.34,
@@ -247,7 +249,7 @@ export function createAudioController() {
       scheduleOsc({
         bus: musicBus,
         type: 'sawtooth',
-        from: midiToHz(bassMidi),
+        from: midiToHz(bassMidi + stageTranspose),
         startTime: time,
         duration: STEP * 1.1,
         gain: 0.09,
@@ -435,7 +437,8 @@ export function createAudioController() {
       }
       return enabled;
     },
-    syncPlaying(isCurrentlyPlaying) {
+    syncPlaying(isCurrentlyPlaying, sectorIndex = 0) {
+      stageTranspose = STAGE_OFFSETS[sectorIndex % STAGE_OFFSETS.length] ?? 0;
       playing = Boolean(isCurrentlyPlaying);
       syncLoop();
     },
@@ -521,6 +524,7 @@ export function createAudioController() {
 
         case 'rock-destroyed':
         case 'bomb-destroyed':
+        case 'cve-destroyed':
           duckMusic(0.08, 0.24);
           scheduleNoise({
             bus: sfxBus,
@@ -540,6 +544,64 @@ export function createAudioController() {
             startTime: now,
             duration: 0.24,
             gain: 0.32,
+          });
+          if (event.type === 'cve-destroyed') {
+            scheduleOsc({
+              bus: sfxBus,
+              type: 'square',
+              from: 659.25,
+              to: 987.77,
+              startTime: now + 0.05,
+              duration: 0.11,
+              gain: 0.22,
+            });
+          }
+          break;
+
+        case 'cve-dropped':
+          scheduleOsc({
+            bus: sfxBus,
+            type: 'square',
+            from: 880,
+            to: 440,
+            startTime: now,
+            duration: 0.12,
+            gain: 0.17,
+          });
+          break;
+
+        case 'crater-carved':
+          duckMusic(0.07, 0.28);
+          scheduleNoise({
+            bus: sfxBus,
+            startTime: now,
+            duration: 0.32,
+            gain: 0.4,
+            filterType: 'lowpass',
+            freqFrom: 950,
+            freqTo: 95,
+            q: 2.0,
+          });
+          scheduleOsc({
+            bus: sfxBus,
+            type: 'triangle',
+            from: 130,
+            to: 34,
+            startTime: now,
+            duration: 0.3,
+            gain: 0.36,
+          });
+          break;
+
+        case 'rolling-stone':
+          scheduleOsc({
+            bus: sfxBus,
+            type: 'triangle',
+            from: 95,
+            to: 140,
+            startTime: now,
+            duration: 0.14,
+            gain: 0.22,
           });
           break;
 

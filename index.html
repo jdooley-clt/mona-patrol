@@ -91,6 +91,13 @@
               <div><dt>Shot accuracy</dt><dd id="stat-accuracy">100%</dd></div>
               <div><dt>Stage bonus</dt><dd id="stat-bonus">+1000</dd></div>
             </dl>
+            <div class="stage-picker" id="stage-picker" role="group" aria-label="Starting stage">
+              <button class="stage-pill" type="button" data-sector-pick="0" aria-pressed="true">1·A–E</button>
+              <button class="stage-pill" type="button" data-sector-pick="1" aria-pressed="false">2·F–J</button>
+              <button class="stage-pill" type="button" data-sector-pick="2" aria-pressed="false">3·K–O</button>
+              <button class="stage-pill" type="button" data-sector-pick="3" aria-pressed="false">4·P–T</button>
+              <button class="stage-pill" type="button" data-sector-pick="4" aria-pressed="false">5·U–Z</button>
+            </div>
             <div class="overlay-actions">
               <button id="primary" class="primary" type="button">Start patrol <span aria-hidden="true">→</span></button>
               <button id="replay-sector" class="secondary-btn" type="button" hidden>Replay A–E</button>
@@ -155,10 +162,10 @@
 
     <h3>Hazards &amp; scoring</h3>
     <ul class="help-list">
-      <li><b>Merge-conflict craters (<code>&lt;&lt;&lt;</code>)</b>: cannot be shot — time your jump arc to clear them (+100 to +150 pts).</li>
-      <li><b>Lunar boulders</b>: jump over them or blast small rocks (1 hit, +100 pts) and tall fractured stacks (2 hits, +200 pts).</li>
-      <li><b>Bug saucers overhead</b>: enter from the left and pass over your rover — shoot them with your upward turret (+200 to +300 pts, +500 wave clear) and intercept flares (+100 pts).</li>
-      <li><b>Stage clear summary</b>: finish major checkpoints (<b>E</b>, <b>J</b>, <b>O</b>, <b>T</b>, <b>Z</b>) under the 50-second par time for a triumphant fanfare, section stats, and bonus points.</li>
+      <li><b>Merge-conflict craters (<code>&lt;&lt;&lt;</code>) &amp; landmines</b>: cannot be shot — time your rover speed and jump arc across tricky Stage 3+ combinations (+100 to +150 pts).</li>
+      <li><b>Lunar boulders &amp; rolling stones</b>: blast small rocks (1 hit), tall fractured stacks (2 hits), and Stage 4+ bouncing highland stones (2 hits, +250 pts), or leap over them.</li>
+      <li><b>Two UFO types</b>: aqua <b>Bug Droppers</b> release fluttering bugs that explode on contact, while crimson-gold <b>CVE Bombers</b> drop heavy CVE warheads that carve fresh craters into the road on impact!</li>
+      <li><b>Stage clear summary</b>: finish major checkpoints (<b>E</b>, <b>J</b>, <b>O</b>, <b>T</b>, <b>Z</b>) under the 52-second par time for a triumphant fanfare, section stats, and bonus points.</li>
     </ul>
 
     <h3>Credits</h3>

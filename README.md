@@ -29,20 +29,24 @@ west/east/trigger to fire, Start to begin or pause).
 
 ## How it plays
 
-- **Five checkpoint sectors**: `A–E` (`main`), `F–J` (`release`), `K–O` (`canary`), `P–T`
-  (`hotfix`), and `U–Z` (`omega`). After `Z`, patrol loops at higher intensity.
+- **Five distinct stages & backgrounds**:
+  1. **`A–E` Lunar Crater Ridge (`main`)**: approachable opening run across boulders and craters.
+  2. **`F–J` Octo Metropolis (`release`)**: sunlit city spires and varied-speed UFO squadrons.
+  3. **`K–O` Canary Minefield (`canary`)**: radar arrays and tricky mine + rock + crater combos.
+  4. **`P–T` Rolling Highlands (`hotfix`)**: canyon mesas, sloped hills, and bouncing stones.
+  5. **`U–Z` Omega Citadel (`omega`)**: full gauntlet combining every hazard and saucer type.
 - **Checkpoint beacons**: reaching any lettered gate awards `+500` points and updates your safe
   respawn point if one of your 3 buggies crashes. Earn an extra buggy at `10,000` points.
 - **Sector time & stats summary**: clearing major gates (`E`, `J`, `O`, `T`, `Z`) plays a
-  triumphant 8-bit fanfare, shows full section stats, and awards `1,000` clear points, `80` points
-  per second under the 50-second par time, UFO bonuses, and `+1,000` for a flawless run.
-- **Hazards**:
-  - **Merge-conflict craters (`<<<`)** and **broken-build mines (`!`)** cannot be shot and must
-    be jumped (`+100` to `+150` pts).
-  - **Lunar boulders** can be jumped or blasted (`1` hit for small rocks, `2` hits for tall
-    stacks; `+100` to `+200` pts).
-  - **Bug saucers** enter from the left of the screen and fly over your rover so you can shoot
-    them overhead (`+200` to `+300` pts, `+500` wave clear) and intercept slow flares (`+100` pts).
+  triumphant 8-bit fanfare, shows full section stats, and awards `1,000+` clear points, `80`
+  points per second under the 52-second par time, UFO bonuses, and `+1,000` for a flawless run.
+- **Hazards & enemies**:
+  - **Merge-conflict craters (`<<<`)** and **armored landmines** cannot be shot and must be
+    jumped (`+100` to `+150` pts), with Stage 3+ combos rewarding speed and jump timing.
+  - **Lunar boulders & rolling stones** can be jumped or blasted (`1` hit for small rocks, `2`
+    hits for tall stacks and bouncing highland stones; `+100` to `+250` pts).
+  - **Two UFO types**: aqua **Bug Droppers** drop fluttering bugs that explode on contact, while
+    crimson-gold **CVE Bombers** drop heavy CVE warheads that carve fresh craters into the road!
 - **Accessibility & motion**: audio starts muted, focus loss pauses play automatically, an ARIA
   live region announces checkpoints and scores, and `prefers-reduced-motion` disables parallax
   drift and crash shake.

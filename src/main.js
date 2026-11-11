@@ -5,6 +5,7 @@ import {
   fireWeapons,
   replayCurrentSector,
   requestJump,
+  selectStartSector,
   shiftGear,
   startGame,
   stepGame,
@@ -65,6 +66,8 @@ const statRocks = document.getElementById('stat-rocks');
 const statJumps = document.getElementById('stat-jumps');
 const statAccuracy = document.getElementById('stat-accuracy');
 const statBonus = document.getElementById('stat-bonus');
+const stagePickerEl = document.getElementById('stage-picker');
+const stagePillBtns = [...document.querySelectorAll('.stage-pill')];
 const announcerEl = document.getElementById('announcer');
 
 const checkpointEl = document.getElementById('checkpoint');
@@ -128,20 +131,30 @@ function announce(message) {
   });
 }
 
+function syncStagePills() {
+  const active = state.selectedSector ?? state.sectorIndex ?? 0;
+  for (const btn of stagePillBtns) {
+    btn.setAttribute('aria-pressed', String(Number(btn.dataset.sectorPick) === active));
+  }
+}
+
 function syncOverlay() {
+  syncStagePills();
   if (state.status === 'ready') {
     overlayEl.hidden = false;
     statsGrid.hidden = true;
+    stagePickerEl.hidden = false;
     replaySectorBtn.hidden = true;
     overlayAudioBtn.hidden = false;
-    overlayKicker.textContent = `CHECKPOINT ${state.checkpointLetter} — ${state.course.sectorName.toUpperCase()} BRANCH`;
+    overlayKicker.textContent = `CHECKPOINT ${state.checkpointLetter} — ${(state.course.themeTitle || state.course.sectorName).toUpperCase()}`;
     overlayTitle.textContent = 'Patrol the lunar ridge.';
     overlayDetail.textContent =
-      'Leap merge-conflict craters, blast boulders ahead and bug saucers flying overhead, and clear checkpoints A to E.';
+      'Leap craters and mines, blast boulders and rolling stones, and clear Bug-Dropper & CVE saucers overhead.';
     primaryBtn.innerHTML = 'Start patrol <span aria-hidden="true">→</span>';
   } else if (state.status === 'paused') {
     overlayEl.hidden = false;
     statsGrid.hidden = true;
+    stagePickerEl.hidden = true;
     replaySectorBtn.hidden = true;
     overlayAudioBtn.hidden = false;
     overlayKicker.textContent = `PAUSED AT POINT ${state.checkpointLetter}`;
@@ -153,10 +166,11 @@ function syncOverlay() {
     const s = state.lastSectorBonus;
     overlayEl.hidden = false;
     statsGrid.hidden = false;
+    stagePickerEl.hidden = true;
     replaySectorBtn.hidden = false;
     overlayAudioBtn.hidden = true;
     replaySectorBtn.textContent = `Replay ${s.sectorRange}`;
-    overlayKicker.textContent = `STAGE ${s.sectorRange} COMPLETE — ${s.sectorName.toUpperCase()} BRANCH`;
+    overlayKicker.textContent = `STAGE ${s.sectorRange} COMPLETE — ${(s.themeTitle || s.sectorName).toUpperCase()}`;
     overlayTitle.textContent =
       s.flawlessBonus > 0
         ? `Flawless patrol! +${s.bonus} pts`
@@ -172,6 +186,7 @@ function syncOverlay() {
   } else if (state.status === 'gameover') {
     overlayEl.hidden = false;
     statsGrid.hidden = true;
+    stagePickerEl.hidden = false;
     replaySectorBtn.hidden = true;
     overlayAudioBtn.hidden = false;
     overlayKicker.textContent = `REACHED CHECKPOINT ${state.checkpointLetter}`;
@@ -250,7 +265,7 @@ function drainEvents() {
       primaryBtn.focus({ preventScroll: true });
     }
   }
-  audio.syncPlaying(state.status === 'playing');
+  audio.syncPlaying(state.status === 'playing', state.sectorIndex);
 }
 
 function beginOrResumePatrol() {
@@ -303,6 +318,16 @@ function toggleSound() {
 }
 
 overlayAudioBtn.addEventListener('click', toggleSound);
+
+for (const btn of stagePillBtns) {
+  btn.addEventListener('click', () => {
+    const idx = Number(btn.dataset.sectorPick);
+    selectStartSector(state, idx);
+    syncDom();
+    renderGame(canvas, state, { theme: currentTheme(), reducedMotion });
+    primaryBtn.focus({ preventScroll: true });
+  });
+}
 
 pauseBtn.addEventListener('click', () => {
   if (state.status === 'playing' || state.status === 'paused') {

@@ -123,6 +123,16 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
     expect(box.height).toBeGreaterThanOrEqual(44);
   }
 
+  // Stage picker previews F–J, K–O, P–T, U–Z backgrounds cleanly and returns to A–E
+  await page.locator('[data-sector-pick="1"]').click();
+  await expect.poll(() => stageData(page, 'checkpoint')).toBe('F');
+  await page.locator('[data-sector-pick="2"]').click();
+  await expect.poll(() => stageData(page, 'checkpoint')).toBe('K');
+  await page.locator('[data-sector-pick="3"]').click();
+  await expect.poll(() => stageData(page, 'checkpoint')).toBe('P');
+  await page.locator('[data-sector-pick="0"]').click();
+  await expect.poll(() => stageData(page, 'checkpoint')).toBe('A');
+
   // axe-core scan in ready (light mode)
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 

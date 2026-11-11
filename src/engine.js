@@ -1,24 +1,28 @@
 // Pure, deterministic simulation for Mona Patrol (no DOM or Web Audio access).
-// Stage 1 (A–E) is tuned for approachable 90%+ completion with left-to-right UFO flyovers
-// and full end-of-section performance statistics.
+// Five distinct stages (A–E, F–J, K–O, P–T, U–Z):
+// - Stage 1 (A–E): Lunar Crater Ridge — approachable 90%+ clear rate, rocks & craters, intro UFOs
+// - Stage 2 (F–J): Octo Metropolis — varied-speed Bug-Dropper & CVE Crater-Bomber UFOs, earlier drops
+// - Stage 3 (K–O): Canary Minefield — tricky mine + crater + boulder skill combinations
+// - Stage 4 (P–T): Highland Slopes — undulating hills with bouncing/rolling stones + aggressive UFOs
+// - Stage 5 (U–Z): Omega Citadel — full arcade gauntlet combining all hazards and enemy types
 
 export const WORLD_WIDTH = 640;
 export const WORLD_HEIGHT = 360;
 export const GROUND_Y = 284;
 export const GRAVITY = 840;
 export const JUMP_VELOCITY = -372;
-export const SECTION_LENGTH = 1300;
-export const PAR_SECONDS = 50;
+export const SECTION_LENGTH = 1350;
+export const PAR_SECONDS = 52;
 export const EXTRA_LIFE_SCORE = 10_000;
 
 export const CHECKPOINTS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 export const SECTORS = [
-  { name: 'main', start: 0, end: 4 },
-  { name: 'release', start: 5, end: 9 },
-  { name: 'canary', start: 10, end: 14 },
-  { name: 'hotfix', start: 15, end: 19 },
-  { name: 'omega', start: 20, end: 25 },
+  { name: 'main', themeTitle: 'Lunar Crater Ridge', start: 0, end: 4 },
+  { name: 'release', themeTitle: 'Octo Metropolis', start: 5, end: 9 },
+  { name: 'canary', themeTitle: 'Canary Minefield', start: 10, end: 14 },
+  { name: 'hotfix', themeTitle: 'Rolling Highlands', start: 15, end: 19 },
+  { name: 'omega', themeTitle: 'Omega Citadel', start: 20, end: 25 },
 ];
 
 export const GEARS = [
@@ -37,9 +41,14 @@ export function mulberry32(seed) {
   };
 }
 
-export function sectorForCheckpoint(cpIndex) {
+export function sectorIndexForCheckpoint(cpIndex) {
   const clamped = Math.max(0, Math.min(CHECKPOINTS.length - 1, cpIndex));
-  return SECTORS.find((s) => clamped >= s.start && clamped <= s.end) ?? SECTORS[0];
+  const idx = SECTORS.findIndex((s) => clamped >= s.start && clamped <= s.end);
+  return idx >= 0 ? idx : 0;
+}
+
+export function sectorForCheckpoint(cpIndex) {
+  return SECTORS[sectorIndexForCheckpoint(cpIndex)];
 }
 
 export function sectorCheckpointLetters(cpIndex) {
@@ -53,36 +62,115 @@ export function createSectionStats() {
     shotsHit: 0,
     ufosSpawned: 0,
     ufosDestroyed: 0,
-    bombsDestroyed: 0,
+    bugsDestroyed: 0,
+    cvesIntercepted: 0,
+    cratersCarved: 0,
     rocksDestroyed: 0,
+    stonesDestroyed: 0,
     hazardsJumped: 0,
     crashes: 0,
   };
 }
 
-// Stepped 2px lunar ground profile; flat around checkpoints and craters for fair jumps.
-export function groundYAt(worldX, obstacles = [], gates = []) {
+// Stepped 2px lunar ground profile. Stages 4–5 (sectorIndex >= 3) feature real
+// highland hills & slopes while keeping checkpoint gates and crater rims level.
+export function groundYAt(worldX, obstacles = [], gates = [], sectorIndex = 0) {
   for (const gate of gates) {
-    if (Math.abs(worldX - gate.x) < 100) return GROUND_Y;
+    if (Math.abs(worldX - gate.x) < 105) return GROUND_Y;
   }
   for (const obs of obstacles) {
     if (obs.kind.startsWith('crater') && worldX >= obs.x - 28 && worldX <= obs.x + obs.width + 28) {
       return GROUND_Y;
     }
   }
+  if (sectorIndex >= 3) {
+    // Pronounced stepped lunar hills for Rolling Highlands & Omega Citadel
+    const hill = Math.sin(worldX * 0.0068) * 14 + Math.cos(worldX * 0.015) * 6;
+    // Blend smoothly near checkpoint gates so transitions never snap
+    let blend = 1;
+    for (const gate of gates) {
+      const dist = Math.abs(worldX - gate.x);
+      if (dist < 220) {
+        blend = Math.min(blend, Math.max(0, (dist - 105) / 115));
+      }
+    }
+    return GROUND_Y + Math.round((hill * blend) / 2) * 2;
+  }
   const raw = Math.sin(worldX * 0.012) * 2.4 + Math.cos(worldX * 0.027) * 1.4;
   return GROUND_Y + Math.round(raw / 2) * 2;
 }
 
-// Deterministically builds one leg between `cpIndex` and `cpIndex + 1`.
-// Stage 1 (A–E, cpIndex 0..3, loop 0) uses extra-generous spacing, narrow craters,
-// shootable boulders, and left-to-right flyover UFO waves.
-export function generateCourseSection(cpIndex, seed = 2026, loop = 0) {
-  const sector = sectorForCheckpoint(cpIndex);
-  if (cpIndex >= sector.end) {
-    return { obstacles: [], waves: [] };
+function makeObstacle(kind, x) {
+  const rx = Math.round(x);
+  switch (kind) {
+    case 'crater-small':
+      return {
+        kind,
+        x: rx,
+        width: 42,
+        height: 26,
+        hp: Infinity,
+        maxHp: Infinity,
+        shootPoints: 0,
+        jumpPoints: 100,
+      };
+    case 'crater-wide':
+      return {
+        kind,
+        x: rx,
+        width: 62,
+        height: 32,
+        hp: Infinity,
+        maxHp: Infinity,
+        shootPoints: 0,
+        jumpPoints: 150,
+      };
+    case 'rock-small':
+      return {
+        kind,
+        x: rx,
+        width: 26,
+        height: 22,
+        hp: 1,
+        maxHp: 1,
+        shootPoints: 100,
+        jumpPoints: 80,
+      };
+    case 'rock-tall':
+      return {
+        kind,
+        x: rx,
+        width: 32,
+        height: 32,
+        hp: 2,
+        maxHp: 2,
+        shootPoints: 200,
+        jumpPoints: 120,
+      };
+    case 'mine':
+      return {
+        kind,
+        x: rx,
+        width: 20,
+        height: 14,
+        hp: Infinity,
+        maxHp: Infinity,
+        shootPoints: 0,
+        jumpPoints: 150,
+      };
+    default:
+      throw new Error(`Unknown obstacle kind: ${kind}`);
   }
-  const isFirstStage = sector.start === 0 && loop === 0;
+}
+
+// Deterministically builds one leg between `cpIndex` and `cpIndex + 1`.
+export function generateCourseSection(cpIndex, seed = 2026, loop = 0) {
+  const sectorIdx = sectorIndexForCheckpoint(cpIndex);
+  const sector = SECTORS[sectorIdx];
+  if (cpIndex >= sector.end) {
+    return { obstacles: [], waves: [], stoneSpawns: [] };
+  }
+  const isFirstStage = sectorIdx === 0 && loop === 0;
   const legOffset = cpIndex - sector.start;
   const startX = legOffset * SECTION_LENGTH;
   const endX = (legOffset + 1) * SECTION_LENGTH;
@@ -90,157 +178,212 @@ export function generateCourseSection(cpIndex, seed = 2026, loop = 0) {
     ((seed >>> 0) ^ Math.imul(cpIndex + 1, 0x9e3779b1) ^ Math.imul(loop + 1, 0x85ebca6b)) >>> 0,
   );
 
-  const difficulty = cpIndex + loop * 10;
   const obstacles = [];
-  let cursor = startX + (cpIndex === 0 && loop === 0 ? 520 : isFirstStage ? 380 : 320);
-  const safeEnd = endX - 260;
-
-  while (cursor < safeEnd) {
-    const roll = rng();
-    let obs;
-    if (isFirstStage) {
-      // Stage 1 (A–E): mostly shootable 1-HP rocks + gentle narrow craters; 2-HP rock appears in C–E
-      if (roll < 0.52) {
-        obs = {
-          kind: 'rock-small',
-          x: Math.round(cursor),
-          width: 26,
-          height: 22,
-          hp: 1,
-          maxHp: 1,
-          shootPoints: 100,
-          jumpPoints: 80,
-        };
-      } else if (roll < 0.82 || cpIndex < 2) {
-        obs = {
-          kind: 'crater-small',
-          x: Math.round(cursor),
-          width: cpIndex === 0 ? 38 : 42,
-          height: 26,
-          hp: Infinity,
-          maxHp: Infinity,
-          shootPoints: 0,
-          jumpPoints: 100,
-        };
-      } else if (roll < 0.94) {
-        obs = {
-          kind: 'rock-tall',
-          x: Math.round(cursor),
-          width: 32,
-          height: 32,
-          hp: 2,
-          maxHp: 2,
-          shootPoints: 200,
-          jumpPoints: 120,
-        };
-      } else {
-        obs = {
-          kind: 'crater-wide',
-          x: Math.round(cursor),
-          width: 54,
-          height: 30,
-          hp: Infinity,
-          maxHp: Infinity,
-          shootPoints: 0,
-          jumpPoints: 150,
-        };
-      }
-    } else if (roll < 0.28) {
-      obs = {
-        kind: 'crater-small',
-        x: Math.round(cursor),
-        width: 46,
-        height: 26,
-        hp: Infinity,
-        maxHp: Infinity,
-        shootPoints: 0,
-        jumpPoints: 100,
-      };
-    } else if (roll < 0.5) {
-      obs = {
-        kind: 'crater-wide',
-        x: Math.round(cursor),
-        width: difficulty >= 10 ? 74 : 64,
-        height: 32,
-        hp: Infinity,
-        maxHp: Infinity,
-        shootPoints: 0,
-        jumpPoints: 150,
-      };
-    } else if (roll < 0.75) {
-      obs = {
-        kind: 'rock-small',
-        x: Math.round(cursor),
-        width: 26,
-        height: 24,
-        hp: 1,
-        maxHp: 1,
-        shootPoints: 100,
-        jumpPoints: 80,
-      };
-    } else if (roll < 0.92) {
-      obs = {
-        kind: 'rock-tall',
-        x: Math.round(cursor),
-        width: 34,
-        height: 34,
-        hp: 2,
-        maxHp: 2,
-        shootPoints: 200,
-        jumpPoints: 120,
-      };
-    } else {
-      obs = {
-        kind: 'mine',
-        x: Math.round(cursor),
-        width: 22,
-        height: 16,
-        hp: Infinity,
-        maxHp: Infinity,
-        shootPoints: 0,
-        jumpPoints: 120,
-      };
-    }
-
+  const pushObs = (obs) => {
     obs.id = `${cpIndex}-${obstacles.length}`;
     obs.destroyed = false;
     obs.scored = false;
     obstacles.push(obs);
+  };
 
-    const minGap = isFirstStage ? 350 : obs.kind === 'crater-wide' ? 270 : 240;
-    const extraGap = (isFirstStage ? 110 : Math.max(25, 95 - Math.min(50, difficulty * 3))) * rng();
-    cursor += obs.width + minGap + Math.round(extraGap);
-  }
+  let cursor = startX + (cpIndex === 0 && loop === 0 ? 520 : isFirstStage ? 390 : 300);
+  const safeEnd = endX - 250;
 
-  const waves = [];
-  const waveCount = !isFirstStage && difficulty >= 8 ? 2 : 1;
-  for (let w = 0; w < waveCount; w++) {
-    const triggerX = Math.round(startX + (cpIndex === 0 ? 340 : 300) + w * 460);
-    if (triggerX < endX - 220) {
-      const count = isFirstStage
-        ? Math.min(3, 1 + Math.floor((cpIndex + 1) / 2))
-        : Math.min(4, 2 + ((cpIndex + w + loop) % 2));
-      const kind = !isFirstStage && difficulty >= 5 && w === waveCount - 1 ? 'bomber' : 'scout';
-      waves.push({
-        id: `wave-${cpIndex}-${w}`,
-        triggerX,
-        spawned: false,
-        kind,
-        count,
-        // Leg A–B UFOs are pure flyover targets; later legs only drop distant slow flares ahead
-        allowBombs: cpIndex >= 1 || loop > 0,
-      });
+  while (cursor < safeEnd) {
+    const roll = rng();
+
+    if (isFirstStage) {
+      // Stage 1 (A–E): approachable 90%+ clear tuning — shootable boulders & narrow craters
+      if (roll < 0.52) {
+        pushObs(makeObstacle('rock-small', cursor));
+      } else if (roll < 0.82 || cpIndex < 2) {
+        const c = makeObstacle('crater-small', cursor);
+        c.width = cpIndex === 0 ? 38 : 42;
+        pushObs(c);
+      } else if (roll < 0.94) {
+        pushObs(makeObstacle('rock-tall', cursor));
+      } else {
+        const cw = makeObstacle('crater-wide', cursor);
+        cw.width = 52;
+        pushObs(cw);
+      }
+      const last = obstacles[obstacles.length - 1];
+      cursor = last.x + last.width + 355 + Math.round(rng() * 105);
+      continue;
+    }
+
+    if (sectorIdx === 1) {
+      // Stage 2 (F–J): Octo Metropolis — wider craters, 2-HP boulders, and rock-pair clusters
+      if (roll < 0.3 && cursor + 150 < safeEnd) {
+        // Skill cluster: small rock guarding a tall boulder right behind it
+        const r1 = makeObstacle('rock-small', cursor);
+        const r2 = makeObstacle('rock-tall', cursor + 64);
+        pushObs(r1);
+        pushObs(r2);
+        cursor = r2.x + r2.width + 255 + Math.round(rng() * 80);
+      } else if (roll < 0.58) {
+        pushObs(makeObstacle('crater-wide', cursor));
+        const last = obstacles[obstacles.length - 1];
+        cursor = last.x + last.width + 250 + Math.round(rng() * 80);
+      } else if (roll < 0.82) {
+        pushObs(makeObstacle('rock-tall', cursor));
+        const last = obstacles[obstacles.length - 1];
+        cursor = last.x + last.width + 235 + Math.round(rng() * 75);
+      } else {
+        pushObs(makeObstacle('crater-small', cursor));
+        const last = obstacles[obstacles.length - 1];
+        cursor = last.x + last.width + 230 + Math.round(rng() * 75);
+      }
+      continue;
+    }
+
+    if (sectorIdx >= 2) {
+      // Stage 3+ (K–O Canary Minefield, P–T Highlands, U–Z Citadel):
+      // Deliberate tricky mine combinations requiring speed control + shoot-then-jump skill!
+      if (roll < 0.28 && cursor + 180 < safeEnd) {
+        // Combo 1: Twin spaced mines (BOOST jumps clean over both, or SLOW hops between them!)
+        const m1 = makeObstacle('mine', cursor);
+        const m2 = makeObstacle('mine', cursor + 96);
+        pushObs(m1);
+        pushObs(m2);
+        cursor = m2.x + m2.width + 255 + Math.round(rng() * 75);
+      } else if (roll < 0.54 && cursor + 190 < safeEnd) {
+        // Combo 2: Boulder shielding a mine right behind it (shoot rock, then immediately jump mine!)
+        const rock = makeObstacle(roll < 0.4 ? 'rock-tall' : 'rock-small', cursor);
+        const mine = makeObstacle('mine', cursor + rock.width + 58);
+        pushObs(rock);
+        pushObs(mine);
+        cursor = mine.x + mine.width + 250 + Math.round(rng() * 75);
+      } else if (roll < 0.76 && cursor + 230 < safeEnd) {
+        // Combo 3: Crater followed by a mine beyond the landing pad (demands jump timing & gear control!)
+        const crater = makeObstacle('crater-small', cursor);
+        const mine = makeObstacle('mine', cursor + crater.width + 138);
+        pushObs(crater);
+        pushObs(mine);
+        cursor = mine.x + mine.width + 255 + Math.round(rng() * 70);
+      } else if (roll < 0.9) {
+        pushObs(makeObstacle('mine', cursor));
+        const last = obstacles[obstacles.length - 1];
+        cursor = last.x + last.width + 215 + Math.round(rng() * 70);
+      } else {
+        pushObs(makeObstacle('crater-wide', cursor));
+        const last = obstacles[obstacles.length - 1];
+        cursor = last.x + last.width + 250 + Math.round(rng() * 70);
+      }
     }
   }
 
-  return { obstacles, waves };
+  // Ensure Stage 3 (K–O) ALWAYS features at least 2 mines per leg regardless of RNG seed
+  if (sectorIdx === 2 && obstacles.filter((o) => o.kind === 'mine').length < 2) {
+    const fallbackX = startX + SECTION_LENGTH - 320;
+    if (!obstacles.some((o) => Math.abs(o.x - fallbackX) < 120)) {
+      pushObs(makeObstacle('mine', fallbackX));
+    }
+  }
+
+  // Rolling stone spawns on highland hills in Stages 4 & 5 (P–T and U–Z)
+  const stoneSpawns = [];
+  if (sectorIdx >= 3) {
+    const stoneCount = sectorIdx >= 4 || loop > 0 ? 2 : 1;
+    for (let s = 0; s < stoneCount; s++) {
+      const triggerX = Math.round(startX + 360 + s * 440);
+      if (triggerX < endX - 240) {
+        stoneSpawns.push({
+          id: `stone-${cpIndex}-${s}`,
+          triggerX,
+          spawned: false,
+          rollSpeed: 82 + s * 18 + loop * 10,
+          bounceVelocity: -195 - (s % 2) * 30,
+        });
+      }
+    }
+  }
+
+  // Scheduled left-to-right UFO waves with escalating variety, speed variance, and drop timing
+  const waves = [];
+  const waveCount = isFirstStage ? 1 : sectorIdx >= 2 || loop > 0 ? 2 : legOffset >= 1 ? 2 : 1;
+
+  for (let w = 0; w < waveCount; w++) {
+    const triggerX = Math.round(startX + (isFirstStage ? 330 : 240) + w * 460);
+    if (triggerX >= endX - 210) continue;
+
+    const count = isFirstStage
+      ? Math.min(3, 1 + Math.floor((cpIndex + 1) / 2))
+      : Math.min(4, 2 + ((cpIndex + w + loop) % 2) + (sectorIdx >= 3 ? 1 : 0));
+
+    // Build per-UFO roster mixing `bug-dropper` (explodes on contact) and `cve-bomber` (creates crater!)
+    const ufoSpecs = [];
+    for (let i = 0; i < count; i++) {
+      let ufoKind = 'bug-dropper';
+      if (isFirstStage) {
+        // Introduce 1 CVE bomber in D–E far ahead so players see CVE crater mechanics safely
+        if (cpIndex === 3 && i === count - 1) ufoKind = 'cve-bomber';
+      } else if (sectorIdx === 1) {
+        // Stage 2 (F–J): mix Bug Droppers and CVE Bombers
+        ufoKind = (i + w + legOffset) % 2 === 1 ? 'cve-bomber' : 'bug-dropper';
+      } else {
+        // Stage 3–5: frequent CVE Bombers paired with fast Bug Droppers
+        ufoKind = (i + w) % 2 === 0 ? 'cve-bomber' : 'bug-dropper';
+      }
+
+      // Vary speed per UFO as levels advance!
+      const speedRoll = rng();
+      let passSpeed;
+      let surgeAmp = 0;
+      if (isFirstStage) {
+        passSpeed = 90 + i * 6;
+      } else {
+        const minSpd = 74;
+        const maxSpd = 128 + sectorIdx * 14 + Math.min(30, loop * 12);
+        passSpeed = Math.round(minSpd + speedRoll * (maxSpd - minSpd));
+        surgeAmp = 14 + sectorIdx * 8;
+      }
+
+      // Drop lead distance shrinks as levels advance so UFOs start dropping bugs/CVEs sooner!
+      const dropLead = isFirstStage
+        ? 250
+        : Math.max(58, 155 - sectorIdx * 26 - loop * 15 + Math.round(rng() * 35));
+
+      const dropsCount =
+        cpIndex === 0 && loop === 0
+          ? 0
+          : isFirstStage
+            ? i === 0 || ufoKind === 'cve-bomber'
+              ? 1
+              : 0
+            : sectorIdx >= 2 && ufoKind === 'bug-dropper'
+              ? 2
+              : 1;
+
+      ufoSpecs.push({
+        kind: ufoKind,
+        passSpeed,
+        surgeAmp,
+        dropLead,
+        dropsCount,
+      });
+    }
+
+    waves.push({
+      id: `wave-${cpIndex}-${w}`,
+      triggerX,
+      spawned: false,
+      kind: ufoSpecs.some((u) => u.kind === 'cve-bomber') ? 'cve-bomber' : 'bug-dropper',
+      count,
+      ufoSpecs,
+    });
+  }
+
+  return { obstacles, waves, stoneSpawns };
 }
 
 export function buildSectorCourse(sectorIndex, seed = 2026, loop = 0) {
-  const sector = SECTORS[sectorIndex] ?? SECTORS[0];
+  const clampedIdx = Math.max(0, Math.min(SECTORS.length - 1, sectorIndex));
+  const sector = SECTORS[clampedIdx];
   const gates = [];
   const obstacles = [];
   const waves = [];
+  const stoneSpawns = [];
 
   for (let cp = sector.start; cp <= sector.end; cp++) {
     const gateX = (cp - sector.start) * SECTION_LENGTH;
@@ -255,38 +398,44 @@ export function buildSectorCourse(sectorIndex, seed = 2026, loop = 0) {
       const leg = generateCourseSection(cp, seed, loop);
       obstacles.push(...leg.obstacles);
       waves.push(...leg.waves);
+      stoneSpawns.push(...leg.stoneSpawns);
     }
   }
 
   return {
-    sectorIndex,
+    sectorIndex: clampedIdx,
     sectorName: sector.name,
+    themeTitle: sector.themeTitle,
     startCp: sector.start,
     endCp: sector.end,
     length: (sector.end - sector.start) * SECTION_LENGTH,
     gates,
     obstacles,
     waves,
+    stoneSpawns,
   };
 }
 
 export function createGameState(options = {}) {
   const seed = options.seed ?? 2026;
   const bestScore = options.bestScore ?? 0;
-  const course = buildSectorCourse(0, seed, 0);
-  const startGround = groundYAt(0, course.obstacles, course.gates);
+  const startSector = Math.max(0, Math.min(SECTORS.length - 1, options.sectorIndex ?? 0));
+  const course = buildSectorCourse(startSector, seed, 0);
+  const startCp = course.startCp;
+  const startGround = groundYAt(0, course.obstacles, course.gates, startSector);
 
   return {
     status: 'ready', // 'ready' | 'playing' | 'paused' | 'crashing' | 'sector-clear' | 'gameover'
     seed,
+    selectedSector: startSector,
     score: 0,
     bestScore,
     nextExtraLifeScore: EXTRA_LIFE_SCORE,
     lives: 3,
     loop: 0,
-    sectorIndex: 0,
-    checkpointIndex: 0,
-    checkpointLetter: 'A',
+    sectorIndex: startSector,
+    checkpointIndex: startCp,
+    checkpointLetter: CHECKPOINTS[startCp],
     elapsed: 0,
     sectorElapsed: 0,
     distanceRemainder: 0,
@@ -314,7 +463,8 @@ export function createGameState(options = {}) {
     },
     shots: [],
     ufos: [],
-    bombs: [],
+    bombs: [], // `{ kind: 'bug' | 'cve', carvesCrater: boolean, ... }`
+    rollingStones: [],
     particles: [],
     events: [],
     input: {
@@ -339,10 +489,26 @@ function addScore(state, points) {
   }
 }
 
+export function selectStartSector(state, sectorIndex) {
+  const clamped = Math.max(0, Math.min(SECTORS.length - 1, sectorIndex));
+  state.selectedSector = clamped;
+  if (state.status === 'ready') {
+    const fresh = createGameState({
+      seed: state.seed,
+      bestScore: state.bestScore,
+      sectorIndex: clamped,
+    });
+    Object.assign(state, fresh);
+  }
+  return state;
+}
+
 export function startGame(state, options = {}) {
+  const sectorIndex = options.sectorIndex ?? state.selectedSector ?? 0;
   const fresh = createGameState({
     seed: options.seed ?? state.seed,
     bestScore: state.bestScore,
+    sectorIndex,
   });
   Object.assign(state, fresh);
   state.status = 'playing';
@@ -350,6 +516,7 @@ export function startGame(state, options = {}) {
     type: 'started',
     checkpoint: state.checkpointLetter,
     sector: state.course.sectorName,
+    sectorIndex: state.sectorIndex,
   });
   return state;
 }
@@ -408,6 +575,7 @@ export function fireWeapons(state) {
       y: state.buggy.y - 16,
       vx: state.speed + 430,
       vy: 0,
+      groundHug: state.buggy.grounded,
       maxX: state.buggy.worldX + 360,
     });
   }
@@ -462,7 +630,7 @@ function respawnAtCheckpoint(state) {
   const gate =
     state.course.gates.find((g) => g.cpIndex === state.checkpointIndex) ?? state.course.gates[0];
   const spawnX = gate.x;
-  const gY = groundYAt(spawnX, state.course.obstacles, state.course.gates);
+  const gY = groundYAt(spawnX, state.course.obstacles, state.course.gates, state.sectorIndex);
 
   state.gearIndex = 1;
   state.speed = GEARS[1].speed;
@@ -476,12 +644,14 @@ function respawnAtCheckpoint(state) {
   state.shots = [];
   state.ufos = [];
   state.bombs = [];
+  state.rollingStones = [];
   state.invulnTimer = 2.0;
 
   for (const wave of state.course.waves) {
-    if (wave.triggerX > spawnX + 120) {
-      wave.spawned = false;
-    }
+    if (wave.triggerX > spawnX + 120) wave.spawned = false;
+  }
+  for (const stSpawn of state.course.stoneSpawns ?? []) {
+    if (stSpawn.triggerX > spawnX + 120) stSpawn.spawned = false;
   }
   state.status = 'playing';
   state.events.push({
@@ -499,6 +669,7 @@ export function advanceToNextSector(state) {
     nextLoop += 1;
   }
   state.sectorIndex = nextSector;
+  state.selectedSector = nextSector;
   state.loop = nextLoop;
   state.course = buildSectorCourse(nextSector, state.seed, nextLoop);
   state.checkpointIndex = state.course.startCp;
@@ -507,7 +678,7 @@ export function advanceToNextSector(state) {
   state.lastSectorBonus = null;
   state.sectionStats = createSectionStats();
 
-  const gY = groundYAt(0, state.course.obstacles, state.course.gates);
+  const gY = groundYAt(0, state.course.obstacles, state.course.gates, nextSector);
   state.gearIndex = 1;
   state.speed = GEARS[1].speed;
   state.buggy.worldX = 0;
@@ -520,12 +691,14 @@ export function advanceToNextSector(state) {
   state.shots = [];
   state.ufos = [];
   state.bombs = [];
+  state.rollingStones = [];
   state.invulnTimer = 1.2;
   state.status = 'playing';
   state.events.push({
     type: 'sector-started',
     checkpoint: state.checkpointLetter,
     sector: state.course.sectorName,
+    sectorIndex: nextSector,
     loop: state.loop,
   });
 }
@@ -540,7 +713,7 @@ export function replayCurrentSector(state) {
   state.lastSectorBonus = null;
   state.sectionStats = createSectionStats();
 
-  const gY = groundYAt(0, state.course.obstacles, state.course.gates);
+  const gY = groundYAt(0, state.course.obstacles, state.course.gates, sector);
   state.gearIndex = 1;
   state.speed = GEARS[1].speed;
   state.buggy.worldX = 0;
@@ -553,51 +726,90 @@ export function replayCurrentSector(state) {
   state.shots = [];
   state.ufos = [];
   state.bombs = [];
+  state.rollingStones = [];
   state.invulnTimer = 1.2;
   state.status = 'playing';
   state.events.push({
     type: 'sector-started',
     checkpoint: state.checkpointLetter,
     sector: state.course.sectorName,
+    sectorIndex: sector,
     loop: state.loop,
   });
 }
 
-// Every UFO enters from the LEFT edge of the screen (`screenX < 0`) and flies
-// left-to-right directly over Mona's rover so the player has a clear shot.
+function normalizeUfoKind(kind) {
+  if (kind === 'cve-bomber' || kind === 'bomber') return 'cve-bomber';
+  return 'bug-dropper';
+}
+
 function spawnUfoWave(state, wave) {
   wave.spawned = true;
-  const isFirstStage = state.sectorIndex === 0 && state.loop === 0;
-  for (let i = 0; i < wave.count; i++) {
-    const canDrop = Boolean(wave.allowBombs) && (!isFirstStage || i === 0);
+  const specs =
+    wave.ufoSpecs ??
+    Array.from({ length: wave.count }, (_, i) => ({
+      kind: normalizeUfoKind(wave.kind),
+      passSpeed: 94 + i * 8,
+      surgeAmp: state.sectorIndex * 8,
+      dropLead: Math.max(60, 240 - state.sectorIndex * 45),
+      dropsCount: 1,
+    }));
+
+  specs.forEach((spec, i) => {
+    const kind = normalizeUfoKind(spec.kind);
     state.ufos.push({
       id: `${wave.id}-ufo-${i}`,
       waveId: wave.id,
-      kind: wave.kind,
-      screenX: -36 - i * 82,
-      passSpeed: (wave.kind === 'bomber' ? 104 : 92) + (i % 2) * 8,
-      y: 66 + (i % 2) * 22,
-      baseY: 66 + (i % 2) * 22,
+      kind,
+      screenX: -36 - i * 80,
+      passSpeed: spec.passSpeed,
+      surgeAmp: spec.surgeAmp ?? 0,
+      dropLead: spec.dropLead ?? 200,
+      nextDropX: state.buggy.screenX + (spec.dropLead ?? 200),
+      y: 62 + (i % 3) * 20,
+      baseY: 62 + (i % 3) * 20,
       phase: i * 1.4,
       age: 0,
-      bombsLeft: canDrop ? 1 : 0,
-      points: wave.kind === 'bomber' ? 300 : 200,
+      bombsLeft: spec.dropsCount ?? 0,
+      points: kind === 'cve-bomber' ? 300 : 200,
     });
     state.sectionStats.ufosSpawned += 1;
-  }
-  state.events.push({ type: 'ufo-wave', kind: wave.kind, count: wave.count });
+  });
+
+  state.events.push({ type: 'ufo-wave', kind: wave.kind, count: specs.length });
+}
+
+function spawnRollingStone(state, spawnSpec) {
+  spawnSpec.spawned = true;
+  const spawnWorldX = state.cameraX + WORLD_WIDTH + 28;
+  const gY = groundYAt(spawnWorldX, state.course.obstacles, state.course.gates, state.sectorIndex);
+  state.rollingStones.push({
+    id: spawnSpec.id,
+    x: spawnWorldX,
+    y: gY,
+    vx: -(spawnSpec.rollSpeed ?? 90),
+    vy: spawnSpec.bounceVelocity ?? -200,
+    bounceVelocity: spawnSpec.bounceVelocity ?? -200,
+    radius: 13,
+    hp: 2,
+    maxHp: 2,
+    points: 250,
+    phase: 0,
+    scored: false,
+  });
+  state.events.push({ type: 'rolling-stone' });
 }
 
 function canCarveCraterAt(course, x) {
   for (const gate of course.gates) {
-    if (Math.abs(x - gate.x) < 200) return false;
+    if (Math.abs(x - gate.x) < 175) return false;
   }
   for (const obs of course.obstacles) {
-    if (!obs.destroyed && x + 44 > obs.x - 190 && x < obs.x + obs.width + 190) {
+    if (!obs.destroyed && x + 44 > obs.x - 155 && x < obs.x + obs.width + 155) {
       return false;
     }
   }
-  return x > 260 && x < course.length - 260;
+  return x > 220 && x < course.length - 220;
 }
 
 function stepParticles(state, dt) {
@@ -636,7 +848,6 @@ export function stepGame(state, dtRaw) {
     return state;
   }
 
-  // Interactive round-end summary stays open until player continues (or optional timer if set)
   if (state.status === 'sector-clear') {
     stepParticles(state, dt);
     if (state.sectorBannerTimer > 0) {
@@ -664,7 +875,6 @@ export function stepGame(state, dtRaw) {
   const holdDelta = (state.input.accelerate ? 18 : 0) - (state.input.brake ? 16 : 0);
   const targetSpeed = Math.max(98, gear.speed + holdDelta);
 
-  // Horizontal speed stays locked while airborne for faithful jump-arc physics.
   if (state.buggy.grounded) {
     const accelRate = 440 * dt;
     if (state.speed < targetSpeed) state.speed = Math.min(targetSpeed, state.speed + accelRate);
@@ -686,8 +896,13 @@ export function stepGame(state, dtRaw) {
     addScore(state, 10);
   }
 
-  // Vertical buggy physics & forgiving crater lip margin
-  const surfaceY = groundYAt(state.buggy.worldX, state.course.obstacles, state.course.gates);
+  // Vertical rover physics & crater check
+  const surfaceY = groundYAt(
+    state.buggy.worldX,
+    state.course.obstacles,
+    state.course.gates,
+    state.sectorIndex,
+  );
   const overCrater = state.course.obstacles.find(
     (o) =>
       o.kind.startsWith('crater') &&
@@ -702,7 +917,6 @@ export function stepGame(state, dtRaw) {
       if (state.buggy.jumpBuffer > 0) {
         requestJump(state);
       } else {
-        // Give coyote window while falling slightly before crashing
         state.buggy.vy = 20;
       }
     } else {
@@ -734,10 +948,15 @@ export function stepGame(state, dtRaw) {
     }
   }
 
-  // Spawn scheduled UFO waves
+  // Spawn scheduled UFO waves & highland rolling stones
   for (const wave of state.course.waves) {
     if (!wave.spawned && state.buggy.worldX >= wave.triggerX) {
       spawnUfoWave(state, wave);
+    }
+  }
+  for (const stSpawn of state.course.stoneSpawns ?? []) {
+    if (!stSpawn.spawned && state.buggy.worldX >= stSpawn.triggerX) {
+      spawnRollingStone(state, stSpawn);
     }
   }
 
@@ -746,6 +965,10 @@ export function stepGame(state, dtRaw) {
     const shot = state.shots[i];
     shot.x += shot.vx * dt;
     shot.y += shot.vy * dt;
+    if (shot.kind === 'forward' && shot.groundHug) {
+      shot.y =
+        groundYAt(shot.x, state.course.obstacles, state.course.gates, state.sectorIndex) - 16;
+    }
 
     if (
       (shot.kind === 'forward' &&
@@ -758,49 +981,86 @@ export function stepGame(state, dtRaw) {
 
     let consumed = false;
 
-    // Both forward and upward shots can intercept falling UFO bombs!
+    // Both forward and upward shots can shoot down falling Bugs and CVE warheads mid-air!
     for (let b = state.bombs.length - 1; b >= 0; b--) {
       const bomb = state.bombs[b];
       if (Math.abs(shot.x - bomb.x) <= 18 && Math.abs(shot.y - bomb.y) <= 18) {
+        const isCve = bomb.kind === 'cve' || bomb.carvesCrater;
+        const pts = isCve ? 150 : 100;
         state.bombs.splice(b, 1);
         consumed = true;
         state.sectionStats.shotsHit += 1;
-        state.sectionStats.bombsDestroyed += 1;
-        addScore(state, 100);
-        spawnExplosion(state, bomb.x, bomb.y, 'mint', 8);
-        state.events.push({ type: 'bomb-destroyed', points: 100 });
+        if (isCve) state.sectionStats.cvesIntercepted += 1;
+        else state.sectionStats.bugsDestroyed += 1;
+        addScore(state, pts);
+        spawnExplosion(state, bomb.x, bomb.y, isCve ? 'gold' : 'mint', 10);
+        state.events.push({ type: isCve ? 'cve-destroyed' : 'bomb-destroyed', points: pts });
         break;
       }
     }
 
     if (!consumed && shot.kind === 'forward') {
-      for (const obs of state.course.obstacles) {
-        if (obs.destroyed || !Number.isFinite(obs.hp)) continue;
-        const obsGround = groundYAt(
-          obs.x + obs.width * 0.5,
-          state.course.obstacles,
-          state.course.gates,
-        );
+      // Check rolling stones first
+      for (let rs = state.rollingStones.length - 1; rs >= 0; rs--) {
+        const stone = state.rollingStones[rs];
         if (
-          shot.x >= obs.x - 6 &&
-          shot.x <= obs.x + obs.width + 6 &&
-          shot.y >= obsGround - obs.height - 10 &&
-          shot.y <= obsGround + 6
+          Math.abs(shot.x - stone.x) <= stone.radius + 10 &&
+          shot.y >= stone.y - stone.radius * 2 - 10 &&
+          shot.y <= stone.y + 14
         ) {
-          obs.hp -= 1;
+          stone.hp -= 1;
           consumed = true;
           state.sectionStats.shotsHit += 1;
-          if (obs.hp <= 0) {
-            obs.destroyed = true;
-            state.sectionStats.rocksDestroyed += 1;
-            addScore(state, obs.shootPoints);
-            spawnExplosion(state, obs.x + obs.width * 0.5, obsGround - obs.height * 0.5, 'lavender', 12);
-            state.events.push({ type: 'rock-destroyed', kind: obs.kind, points: obs.shootPoints });
+          if (stone.hp <= 0) {
+            state.rollingStones.splice(rs, 1);
+            state.sectionStats.stonesDestroyed += 1;
+            addScore(state, stone.points);
+            spawnExplosion(state, stone.x, stone.y - stone.radius, 'coral', 12);
+            state.events.push({ type: 'rock-destroyed', kind: 'rolling-stone', points: stone.points });
           } else {
             spawnExplosion(state, shot.x, shot.y, 'ivory', 5);
-            state.events.push({ type: 'rock-damaged', kind: obs.kind });
+            state.events.push({ type: 'rock-damaged', kind: 'rolling-stone' });
           }
           break;
+        }
+      }
+
+      if (!consumed) {
+        for (const obs of state.course.obstacles) {
+          if (obs.destroyed || !Number.isFinite(obs.hp)) continue;
+          const obsGround = groundYAt(
+            obs.x + obs.width * 0.5,
+            state.course.obstacles,
+            state.course.gates,
+            state.sectorIndex,
+          );
+          if (
+            shot.x >= obs.x - 6 &&
+            shot.x <= obs.x + obs.width + 6 &&
+            shot.y >= obsGround - obs.height - 10 &&
+            shot.y <= obsGround + 6
+          ) {
+            obs.hp -= 1;
+            consumed = true;
+            state.sectionStats.shotsHit += 1;
+            if (obs.hp <= 0) {
+              obs.destroyed = true;
+              state.sectionStats.rocksDestroyed += 1;
+              addScore(state, obs.shootPoints);
+              spawnExplosion(
+                state,
+                obs.x + obs.width * 0.5,
+                obsGround - obs.height * 0.5,
+                'lavender',
+                12,
+              );
+              state.events.push({ type: 'rock-destroyed', kind: obs.kind, points: obs.shootPoints });
+            } else {
+              spawnExplosion(state, shot.x, shot.y, 'ivory', 5);
+              state.events.push({ type: 'rock-damaged', kind: obs.kind });
+            }
+            break;
+          }
         }
       }
     } else if (!consumed && shot.kind === 'upward') {
@@ -821,7 +1081,7 @@ export function stepGame(state, dtRaw) {
             addScore(state, 500);
             state.events.push({ type: 'wave-cleared', points: pts + 500 });
           } else {
-            state.events.push({ type: 'ufo-destroyed', points: pts });
+            state.events.push({ type: 'ufo-destroyed', kind: ufo.kind, points: pts });
           }
           break;
         }
@@ -831,43 +1091,58 @@ export function stepGame(state, dtRaw) {
     if (consumed) state.shots.splice(i, 1);
   }
 
-  // Update overhead Bug UFOs: enter from left (`screenX < 0`), pass directly over
-  // Mona's turret (`screenX` crosses `buggy.screenX`), and exit off the right edge.
+  // Update overhead UFOs: enter from left (`screenX < 0`), vary speed dynamically in higher
+  // stages, pass over Mona's turret, and drop either exploding Bugs or crater-carving CVEs!
   for (let u = state.ufos.length - 1; u >= 0; u--) {
     const ufo = state.ufos[u];
+    const normKind = normalizeUfoKind(ufo.kind);
     ufo.age += dt;
-    ufo.screenX += (ufo.passSpeed ?? 96) * dt;
-    const bob = Math.round(Math.sin(ufo.age * 3.2 + ufo.phase) * 3) * 2;
-    ufo.y = ufo.baseY + bob;
+
+    const surge = (ufo.surgeAmp ?? 0) * Math.sin(ufo.age * 3.4 + ufo.phase);
+    const currentPassSpeed = Math.max(58, (ufo.passSpeed ?? 96) + surge);
+    ufo.screenX += currentPassSpeed * dt;
+
+    const bobAmp = normKind === 'cve-bomber' ? 4 : 3;
+    ufo.y = ufo.baseY + Math.round(Math.sin(ufo.age * 3.6 + ufo.phase) * bobAmp) * 2;
 
     if (ufo.screenX > WORLD_WIDTH + 48) {
       state.ufos.splice(u, 1);
       continue;
     }
 
-    // Only drop a slow, visible flare WELL AHEAD of the player after passing overhead
+    const triggerScreenX = ufo.nextDropX ?? state.buggy.screenX + (ufo.dropLead ?? 200);
     if (
       ufo.bombsLeft > 0 &&
-      ufo.screenX >= state.buggy.screenX + 255 &&
-      ufo.screenX <= WORLD_WIDTH - 95
+      ufo.screenX >= triggerScreenX &&
+      ufo.screenX > state.buggy.screenX + 48 &&
+      ufo.screenX <= WORLD_WIDTH - 75
     ) {
       ufo.bombsLeft -= 1;
+      ufo.nextDropX = ufo.screenX + 145;
+      const isCve = normKind === 'cve-bomber';
+      const baseFallVy = 66 + state.sectorIndex * 14 + Math.min(24, state.loop * 10);
       state.bombs.push({
+        kind: isCve ? 'cve' : 'bug',
+        carvesCrater: isCve,
         x: state.cameraX + ufo.screenX,
         y: ufo.y + 12,
-        vx: state.speed * 0.12,
-        vy: 66,
-        carvesCrater: ufo.kind === 'bomber' && (state.sectorIndex > 0 || state.loop > 0),
+        vx: state.speed * (isCve ? 0.16 : 0.12),
+        vy: baseFallVy,
+        age: 0,
       });
-      state.events.push({ type: 'bomb-dropped', kind: ufo.kind });
+      state.events.push({ type: isCve ? 'cve-dropped' : 'bug-dropped', kind: normKind });
     }
   }
 
-  // Update slow-drifting plasma bombs
+  // Update falling Bugs (explode on contact) & CVEs (carve craters on road impact!)
   for (let b = state.bombs.length - 1; b >= 0; b--) {
     const bomb = state.bombs[b];
-    bomb.x += bomb.vx * dt;
-    bomb.vy += 52 * dt;
+    const isCve = bomb.kind === 'cve' || Boolean(bomb.carvesCrater);
+    bomb.age = (bomb.age ?? 0) + dt;
+    // Bugs flutter slightly as they descend; CVEs drop straight like heavy warheads
+    const flutterVx = !isCve ? Math.sin(bomb.age * 9) * 22 : 0;
+    bomb.x += (bomb.vx + flutterVx) * dt;
+    bomb.vy += (isCve ? 72 : 52) * dt;
     bomb.y += bomb.vy * dt;
 
     if (
@@ -876,34 +1151,82 @@ export function stepGame(state, dtRaw) {
       bomb.y <= state.buggy.y + 2
     ) {
       state.bombs.splice(b, 1);
-      triggerCrash(state, 'saucer flare');
+      triggerCrash(state, isCve ? 'CVE warhead' : 'dropped bug');
       return state;
     }
 
-    const bGround = groundYAt(bomb.x, state.course.obstacles, state.course.gates);
+    const bGround = groundYAt(
+      bomb.x,
+      state.course.obstacles,
+      state.course.gates,
+      state.sectorIndex,
+    );
     if (bomb.y >= bGround) {
       state.bombs.splice(b, 1);
-      spawnExplosion(state, bomb.x, bGround - 4, 'coral', 8);
-      if (bomb.carvesCrater && canCarveCraterAt(state.course, bomb.x - 22)) {
+      spawnExplosion(state, bomb.x, bGround - 4, isCve ? 'ruby' : 'coral', isCve ? 14 : 8);
+      if (isCve && canCarveCraterAt(state.course, bomb.x - 22)) {
         state.course.obstacles.push({
-          id: `bomb-crater-${Math.round(bomb.x)}`,
+          id: `cve-crater-${Math.round(bomb.x)}`,
           kind: 'crater-small',
+          fromCve: true,
           x: Math.round(bomb.x - 22),
           width: 44,
-          height: 24,
+          height: 26,
           hp: Infinity,
           maxHp: Infinity,
           shootPoints: 0,
-          jumpPoints: 100,
+          jumpPoints: 120,
           destroyed: false,
           scored: false,
         });
-        state.events.push({ type: 'crater-carved' });
+        state.sectionStats.cratersCarved += 1;
+        state.events.push({ type: 'crater-carved', x: Math.round(bomb.x) });
       }
     }
   }
 
-  // Surface obstacle collisions (with forgiving inset) & clean jump-over bonuses
+  // Update bouncing / rolling highland stones (Stages 4 & 5)
+  for (let rs = state.rollingStones.length - 1; rs >= 0; rs--) {
+    const stone = state.rollingStones[rs];
+    stone.x += stone.vx * dt;
+    stone.phase += dt * 10;
+    stone.vy += GRAVITY * 0.72 * dt;
+    stone.y += stone.vy * dt;
+
+    const sGround = groundYAt(
+      stone.x,
+      state.course.obstacles,
+      state.course.gates,
+      state.sectorIndex,
+    );
+    if (stone.y >= sGround) {
+      stone.y = sGround;
+      stone.vy = stone.bounceVelocity;
+    }
+
+    if (stone.x < state.cameraX - 48) {
+      state.rollingStones.splice(rs, 1);
+      continue;
+    }
+
+    if (
+      Math.abs(stone.x - state.buggy.worldX) <= stone.radius + 16 &&
+      stone.y >= state.buggy.y - 26 &&
+      stone.y - stone.radius * 2 <= state.buggy.y - 4
+    ) {
+      triggerCrash(state, 'rolling stone');
+      return state;
+    }
+
+    if (!stone.scored && stone.x + stone.radius < state.buggy.worldX - 24) {
+      stone.scored = true;
+      state.sectionStats.hazardsJumped += 1;
+      addScore(state, 150);
+      state.events.push({ type: 'jump-clear', kind: 'rolling-stone', points: 150 });
+    }
+  }
+
+  // Surface obstacle collisions & clean jump-over bonuses
   const buggyLeft = state.buggy.worldX - 18;
   const buggyRight = state.buggy.worldX + 18;
   const buggyTop = state.buggy.y - 26;
@@ -916,15 +1239,16 @@ export function stepGame(state, dtRaw) {
         obs.x + obs.width * 0.5,
         state.course.obstacles,
         state.course.gates,
+        state.sectorIndex,
       );
       const obsTop = obsGround - obs.height;
       if (
         buggyRight >= obs.x + 5 &&
         buggyLeft <= obs.x + obs.width - 5 &&
-        buggyBottom >= obsTop + 5 &&
+        buggyBottom >= obsTop + 4 &&
         buggyTop <= obsGround
       ) {
-        triggerCrash(state, obs.kind);
+        triggerCrash(state, obs.kind === 'mine' ? 'landmine' : obs.kind);
         return state;
       }
     }
@@ -945,7 +1269,7 @@ export function stepGame(state, dtRaw) {
 
       if (gate.isMajor) {
         const secs = Math.round(state.sectorElapsed * 10) / 10;
-        const clearBonus = 1000;
+        const clearBonus = 1000 + state.sectorIndex * 250;
         const timeBonus = Math.max(0, Math.round((PAR_SECONDS - secs) * 80));
         const ufoBonus = state.sectionStats.ufosDestroyed * 150;
         const flawlessBonus = state.sectionStats.crashes === 0 ? 1000 : 0;
@@ -964,6 +1288,7 @@ export function stepGame(state, dtRaw) {
         state.lastSectorBonus = {
           sectorRange: `${startLetter}–${gate.letter}`,
           sectorName: state.course.sectorName,
+          themeTitle: state.course.themeTitle,
           letter: gate.letter,
           seconds: secs,
           parSeconds: PAR_SECONDS,
@@ -974,8 +1299,10 @@ export function stepGame(state, dtRaw) {
           bonus: totalBonus,
           ufosDestroyed: state.sectionStats.ufosDestroyed,
           ufosSpawned: state.sectionStats.ufosSpawned,
-          rocksDestroyed: state.sectionStats.rocksDestroyed,
-          bombsDestroyed: state.sectionStats.bombsDestroyed,
+          rocksDestroyed:
+            state.sectionStats.rocksDestroyed + state.sectionStats.stonesDestroyed,
+          bugsDestroyed: state.sectionStats.bugsDestroyed,
+          cvesIntercepted: state.sectionStats.cvesIntercepted,
           hazardsJumped: state.sectionStats.hazardsJumped,
           shotsFired: state.sectionStats.shotsFired,
           shotsHit: state.sectionStats.shotsHit,
@@ -992,6 +1319,7 @@ export function stepGame(state, dtRaw) {
         state.shots = [];
         state.ufos = [];
         state.bombs = [];
+        state.rollingStones = [];
         state.events.push({
           type: 'sector-clear',
           checkpoint: gate.letter,

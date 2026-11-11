@@ -304,6 +304,29 @@ h1 span {
   color: var(--ink);
 }
 
+.stage-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 10px;
+}
+
+.stage-pill {
+  flex: 1 1 54px;
+  min-height: 32px;
+  padding: 4px 6px;
+  font: 800 11px/1 ui-monospace, Consolas, monospace;
+  border-width: 1.5px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+}
+
+.stage-pill[aria-pressed="true"] {
+  background: var(--lavender);
+  border-width: 2px;
+  box-shadow: 0 2px 0 var(--ink);
+}
+
 .secondary-btn {
   display: inline-flex;
   align-items: center;

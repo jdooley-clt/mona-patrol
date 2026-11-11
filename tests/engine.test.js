@@ -281,6 +281,120 @@ test('bomber bombs carve craters only in safe road stretches and groundYAt flatt
   assert.equal(state.course.obstacles[0].kind, 'crater-small');
 });
 
+test('Bug-Dropper UFOs drop exploding bugs while CVE-Bomber UFOs drop crater-carving CVEs, with faster/sooner drops in higher stages', () => {
+  const stage1 = buildSectorCourse(0, 2026, 0);
+  const stage2 = buildSectorCourse(1, 2026, 0);
+  const stage3 = buildSectorCourse(2, 2026, 0);
+
+  const s1Specs = stage1.waves.flatMap((w) => w.ufoSpecs);
+  const s2Specs = stage2.waves.flatMap((w) => w.ufoSpecs);
+  const s3Specs = stage3.waves.flatMap((w) => w.ufoSpecs);
+
+  assert.ok(s2Specs.some((u) => u.kind === 'bug-dropper'), 'Stage 2 includes bug-dropper UFOs');
+  assert.ok(s2Specs.some((u) => u.kind === 'cve-bomber'), 'Stage 2 includes cve-bomber UFOs');
+
+  const uniqueStage2Speeds = new Set(s2Specs.map((u) => u.passSpeed));
+  assert.ok(uniqueStage2Speeds.size >= 2, 'Stage 2 UFOs vary in speed');
+  assert.ok(s2Specs.every((u) => u.surgeAmp > 0), 'Higher-stage UFOs dynamically vary speed');
+
+  const avgLead1 = s1Specs.reduce((a, u) => a + u.dropLead, 0) / s1Specs.length;
+  const avgLead2 = s2Specs.reduce((a, u) => a + u.dropLead, 0) / s2Specs.length;
+  const avgLead3 = s3Specs.reduce((a, u) => a + u.dropLead, 0) / s3Specs.length;
+  assert.ok(avgLead2 < avgLead1, 'Stage 2 UFOs start dropping bugs sooner than Stage 1');
+  assert.ok(avgLead3 < avgLead2, 'Stage 3 UFOs start dropping bugs sooner than Stage 2');
+
+  // Verify Bug explodes on road WITHOUT carving a crater, whereas CVE carves a crater on impact
+  const state = createGameState({ seed: 77, sectorIndex: 1 });
+  startGame(state, { seed: 77, sectorIndex: 1 });
+  state.course.obstacles = [];
+  state.course.waves = [];
+
+  state.bombs.push({
+    kind: 'bug',
+    carvesCrater: false,
+    x: 600,
+    y: GROUND_Y - 2,
+    vx: 0,
+    vy: 150,
+    age: 0,
+  });
+  stepGame(state, 0.04);
+  assert.equal(state.course.obstacles.length, 0, 'Dropped bug explodes without carving a crater');
+
+  state.bombs.push({
+    kind: 'cve',
+    carvesCrater: true,
+    x: 640,
+    y: GROUND_Y - 2,
+    vx: 0,
+    vy: 150,
+    age: 0,
+  });
+  stepGame(state, 0.04);
+  assert.equal(state.course.obstacles.length, 1, 'Dropped CVE carves a new crater on impact');
+  assert.equal(state.course.obstacles[0].fromCve, true);
+  assert.equal(state.sectionStats.cratersCarved, 1);
+});
+
+test('Stage 3 (K–O) introduces indestructible mines in tricky combinations and Stage 4 (P–T) adds hills with rolling stones', () => {
+  const stage1 = buildSectorCourse(0, 2026, 0);
+  const stage2 = buildSectorCourse(1, 2026, 0);
+  const stage3 = buildSectorCourse(2, 2026, 0);
+  const stage4 = buildSectorCourse(3, 2026, 0);
+
+  assert.equal(stage1.obstacles.filter((o) => o.kind === 'mine').length, 0, 'No mines in Stage 1');
+  assert.equal(stage2.obstacles.filter((o) => o.kind === 'mine').length, 0, 'No mines in Stage 2');
+
+  const stage3Mines = stage3.obstacles.filter((o) => o.kind === 'mine');
+  assert.ok(stage3Mines.length >= 8, `Stage 3 places mines across legs (got ${stage3Mines.length})`);
+  assert.ok(stage3Mines.every((m) => !Number.isFinite(m.hp)), 'Mines must be jumped, not shot');
+
+  // Verify Stage 3 includes close skill combinations (paired spacing <= 165px)
+  let comboPairs = 0;
+  for (let i = 1; i < stage3.obstacles.length; i++) {
+    const gap =
+      stage3.obstacles[i].x - (stage3.obstacles[i - 1].x + stage3.obstacles[i - 1].width);
+    if (gap <= 165) comboPairs += 1;
+  }
+  assert.ok(comboPairs >= 2, `Stage 3 builds tricky obstacle combinations (got ${comboPairs})`);
+
+  // Verify Stage 4 hills vary elevation and spawn bouncing rolling stones
+  const heights = [];
+  for (let wx = 300; wx <= 1050; wx += 50) {
+    heights.push(groundYAt(wx, [], stage4.gates, 3));
+  }
+  const hillSpan = Math.max(...heights) - Math.min(...heights);
+  assert.ok(hillSpan >= 14, `Stage 4 features pronounced hills (span ${hillSpan}px)`);
+  assert.ok(stage4.stoneSpawns.length >= 4, 'Stage 4 schedules rolling stones across legs');
+
+  const state = createGameState({ seed: 2026, sectorIndex: 3 });
+  startGame(state, { seed: 2026, sectorIndex: 3 });
+  state.course.obstacles = [];
+  state.course.waves = [];
+
+  while (state.rollingStones.length === 0) {
+    stepGame(state, 0.04);
+  }
+  const stone = state.rollingStones[0];
+  const initialX = stone.x;
+  stepGame(state, 0.05);
+  assert.ok(stone.x < initialX, 'Rolling stone advances toward the rover');
+
+  // Place stone in front of rover and shatter it with 2 forward laser shots
+  stone.x = state.buggy.worldX + 110;
+  stone.y = state.buggy.y;
+  stone.vy = -80;
+  state.fireCooldown = 0;
+  fireWeapons(state);
+  for (let i = 0; i < 8; i++) stepGame(state, 0.02);
+  assert.equal(state.rollingStones.length, 1, 'Rolling stone survives 1st hit');
+  state.fireCooldown = 0;
+  fireWeapons(state);
+  for (let i = 0; i < 10; i++) stepGame(state, 0.02);
+  assert.equal(state.rollingStones.length, 0, 'Rolling stone shatters on 2nd hit');
+  assert.equal(state.sectionStats.stonesDestroyed, 1);
+});
+
 test('UFOs always enter from the left edge, pass over the player, and never drop bombs on top of the rover', () => {
   const state = createGameState({ seed: 2026 });
   startGame(state, { seed: 2026 });
