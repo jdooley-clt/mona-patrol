@@ -72,8 +72,8 @@ export function createSectionStats() {
   };
 }
 
-// Stepped 2px lunar ground profile. Stages 4–5 (sectorIndex >= 3) feature real
-// highland hills & slopes while keeping checkpoint gates and crater rims level.
+// Smooth fine-grained lunar ground profile. Stages 4–5 (sectorIndex >= 3) feature real
+// highland hills & valleys while keeping checkpoint gates and crater rims level.
 export function groundYAt(worldX, obstacles = [], gates = [], sectorIndex = 0) {
   for (const gate of gates) {
     if (Math.abs(worldX - gate.x) < 105) return GROUND_Y;
@@ -84,9 +84,7 @@ export function groundYAt(worldX, obstacles = [], gates = [], sectorIndex = 0) {
     }
   }
   if (sectorIndex >= 3) {
-    // Pronounced stepped lunar hills for Rolling Highlands & Omega Citadel
     const hill = Math.sin(worldX * 0.0068) * 14 + Math.cos(worldX * 0.015) * 6;
-    // Blend smoothly near checkpoint gates so transitions never snap
     let blend = 1;
     for (const gate of gates) {
       const dist = Math.abs(worldX - gate.x);
@@ -94,10 +92,10 @@ export function groundYAt(worldX, obstacles = [], gates = [], sectorIndex = 0) {
         blend = Math.min(blend, Math.max(0, (dist - 105) / 115));
       }
     }
-    return GROUND_Y + Math.round((hill * blend) / 2) * 2;
+    return Math.round((GROUND_Y + hill * blend) * 2) / 2;
   }
-  const raw = Math.sin(worldX * 0.012) * 2.4 + Math.cos(worldX * 0.027) * 1.4;
-  return GROUND_Y + Math.round(raw / 2) * 2;
+  const raw = Math.sin(worldX * 0.012) * 2.5 + Math.cos(worldX * 0.027) * 1.3;
+  return Math.round((GROUND_Y + raw) * 2) / 2;
 }
 
 function makeObstacle(kind, x) {
@@ -311,56 +309,72 @@ export function generateCourseSection(cpIndex, seed = 2026, loop = 0) {
       ? Math.min(3, 1 + Math.floor((cpIndex + 1) / 2))
       : Math.min(4, 2 + ((cpIndex + w + loop) % 2) + (sectorIdx >= 3 ? 1 : 0));
 
-    // Build per-UFO roster mixing `bug-dropper` (explodes on contact) and `cve-bomber` (creates crater!)
+    // Build per-UFO roster mixing `bug-dropper` (swooping wave, drops exploding bugs)
+    // and `cve-bomber` (stalk-and-hover strafe, drops crater-carving CVEs).
+    // Majority enter from left; a small, increasing fraction enter from right as stages advance!
+    const rightShareByStage = [0.15, 0.28, 0.35, 0.42, 0.46];
+    const rightProb = rightShareByStage[Math.min(4, sectorIdx)] ?? 0.3;
+
     const ufoSpecs = [];
     for (let i = 0; i < count; i++) {
       let ufoKind = 'bug-dropper';
       if (isFirstStage) {
-        // Introduce 1 CVE bomber in D–E far ahead so players see CVE crater mechanics safely
         if (cpIndex === 3 && i === count - 1) ufoKind = 'cve-bomber';
       } else if (sectorIdx === 1) {
-        // Stage 2 (F–J): mix Bug Droppers and CVE Bombers
         ufoKind = (i + w + legOffset) % 2 === 1 ? 'cve-bomber' : 'bug-dropper';
       } else {
-        // Stage 3–5: frequent CVE Bombers paired with fast Bug Droppers
         ufoKind = (i + w) % 2 === 0 ? 'cve-bomber' : 'bug-dropper';
       }
 
-      // Vary speed per UFO as levels advance!
-      const speedRoll = rng();
-      let passSpeed;
-      let surgeAmp = 0;
+      // Entry side: majority from left; deterministic increasing right-side entries
+      let enterFrom = 'left';
       if (isFirstStage) {
-        passSpeed = 90 + i * 6;
-      } else {
-        const minSpd = 74;
-        const maxSpd = 128 + sectorIdx * 14 + Math.min(30, loop * 12);
-        passSpeed = Math.round(minSpd + speedRoll * (maxSpd - minSpd));
-        surgeAmp = 14 + sectorIdx * 8;
+        if (cpIndex === 3 && i === count - 1) enterFrom = 'right';
+      } else if (i > 0 && rng() < rightProb * 1.35) {
+        enterFrom = 'right';
+      } else if (sectorIdx >= 2 && w === 1 && i === count - 1) {
+        enterFrom = 'right';
       }
 
-      // Drop lead distance shrinks as levels advance so UFOs start dropping bugs/CVEs sooner!
-      const dropLead = isFirstStage
-        ? 250
-        : Math.max(58, 155 - sectorIdx * 26 - loop * 15 + Math.round(rng() * 35));
+      const speedRoll = rng();
+      let passSpeed;
+      let surgeAmp;
+      if (isFirstStage) {
+        passSpeed = 96 + i * 10 + cpIndex * 4;
+        surgeAmp = 12 + cpIndex * 3;
+      } else {
+        const minSpd = 82;
+        const maxSpd = 136 + sectorIdx * 14 + Math.min(30, loop * 12);
+        passSpeed = Math.round(minSpd + speedRoll * (maxSpd - minSpd));
+        surgeAmp = 18 + sectorIdx * 8;
+      }
 
-      const dropsCount =
+      const dropLead = isFirstStage
+        ? 185 - cpIndex * 12
+        : Math.max(52, 140 - sectorIdx * 24 - loop * 12 + Math.round(rng() * 30));
+
+      const dropInterval =
+        cpIndex === 0 && loop === 0
+          ? 8.5
+          : isFirstStage
+            ? 4.6 - cpIndex * 0.25
+            : Math.max(1.65, 3.3 - sectorIdx * 0.42 - loop * 0.2);
+
+      const maxDrops =
         cpIndex === 0 && loop === 0
           ? 0
           : isFirstStage
-            ? i === 0 || ufoKind === 'cve-bomber'
-              ? 1
-              : 0
-            : sectorIdx >= 2 && ufoKind === 'bug-dropper'
-              ? 2
-              : 1;
+            ? 2
+            : 3 + sectorIdx;
 
       ufoSpecs.push({
         kind: ufoKind,
+        enterFrom,
         passSpeed,
         surgeAmp,
         dropLead,
-        dropsCount,
+        dropInterval,
+        dropsCount: maxDrops,
       });
     }
 
@@ -745,38 +759,75 @@ function normalizeUfoKind(kind) {
 
 function spawnUfoWave(state, wave) {
   wave.spawned = true;
+  const MAX_ACTIVE_UFOS = 5;
   const specs =
     wave.ufoSpecs ??
     Array.from({ length: wave.count }, (_, i) => ({
       kind: normalizeUfoKind(wave.kind),
-      passSpeed: 94 + i * 8,
-      surgeAmp: state.sectorIndex * 8,
-      dropLead: Math.max(60, 240 - state.sectorIndex * 45),
-      dropsCount: 1,
+      enterFrom: 'left',
+      passSpeed: 98 + i * 8,
+      surgeAmp: 14 + state.sectorIndex * 8,
+      dropLead: Math.max(55, 190 - state.sectorIndex * 35),
+      dropInterval: Math.max(1.7, 3.8 - state.sectorIndex * 0.45),
+      dropsCount: 3,
     }));
 
+  let leftCount = 0;
+  let rightCount = 0;
+  let spawnedBug = false;
+  let spawnedCve = false;
+
   specs.forEach((spec, i) => {
+    if (state.ufos.length >= MAX_ACTIVE_UFOS) return;
     const kind = normalizeUfoKind(spec.kind);
+    const fromRight = spec.enterFrom === 'right';
+    const startX = fromRight
+      ? WORLD_WIDTH + 34 + rightCount * 68
+      : -34 - leftCount * 68;
+    if (fromRight) rightCount += 1;
+    else leftCount += 1;
+
+    if (kind === 'cve-bomber') spawnedCve = true;
+    else spawnedBug = true;
+
+    const minX = kind === 'cve-bomber' ? 74 : 52;
+    const maxX = kind === 'cve-bomber' ? 470 : 430;
+    const baseY = kind === 'cve-bomber' ? 54 + (i % 2) * 18 : 66 + (i % 3) * 18;
+
     state.ufos.push({
       id: `${wave.id}-ufo-${i}`,
       waveId: wave.id,
       kind,
-      screenX: -36 - i * 80,
+      pattern: kind === 'cve-bomber' ? 'stalk-hover' : 'swoop-wave',
+      enterFrom: fromRight ? 'right' : 'left',
+      dir: fromRight ? -1 : 1,
+      entered: false,
+      minX,
+      maxX,
+      screenX: startX,
       passSpeed: spec.passSpeed,
-      surgeAmp: spec.surgeAmp ?? 0,
-      dropLead: spec.dropLead ?? 200,
-      nextDropX: state.buggy.screenX + (spec.dropLead ?? 200),
-      y: 62 + (i % 3) * 20,
-      baseY: 62 + (i % 3) * 20,
+      surgeAmp: spec.surgeAmp ?? 16,
+      dropLead: spec.dropLead ?? 140,
+      dropInterval: spec.dropInterval ?? 3.2,
+      dropCooldown: 1.15 + i * 0.65,
+      hoverTimer: 0,
+      y: baseY,
+      baseY,
       phase: i * 1.4,
       age: 0,
-      bombsLeft: spec.dropsCount ?? 0,
+      bombsLeft: spec.dropsCount ?? 2,
       points: kind === 'cve-bomber' ? 300 : 200,
     });
     state.sectionStats.ufosSpawned += 1;
   });
 
-  state.events.push({ type: 'ufo-wave', kind: wave.kind, count: specs.length });
+  state.events.push({
+    type: 'ufo-wave',
+    kind: wave.kind,
+    hasCve: spawnedCve,
+    hasBugDropper: spawnedBug,
+    count: leftCount + rightCount,
+  });
 }
 
 function spawnRollingStone(state, spawnSpec) {
@@ -1091,46 +1142,111 @@ export function stepGame(state, dtRaw) {
     if (consumed) state.shots.splice(i, 1);
   }
 
-  // Update overhead UFOs: enter from left (`screenX < 0`), vary speed dynamically in higher
-  // stages, pass over Mona's turret, and drop either exploding Bugs or crater-carving CVEs!
+  // Update overhead UFOs:
+  // - Majority enter from left, increasing fraction enter from right
+  // - Move back and forth across patrol bounds over Mona until destroyed!
+  // - `bug-dropper`: agile swooping figure-8 wave sweep
+  // - `cve-bomber`: steady horizontal stalk-and-hover strafe that pauses to telegraph CVE drops
   for (let u = state.ufos.length - 1; u >= 0; u--) {
     const ufo = state.ufos[u];
     const normKind = normalizeUfoKind(ufo.kind);
+    const isCve = normKind === 'cve-bomber';
     ufo.age += dt;
+    if (ufo.dropCooldown > 0) ufo.dropCooldown = Math.max(0, ufo.dropCooldown - dt);
 
-    const surge = (ufo.surgeAmp ?? 0) * Math.sin(ufo.age * 3.4 + ufo.phase);
-    const currentPassSpeed = Math.max(58, (ufo.passSpeed ?? 96) + surge);
-    ufo.screenX += currentPassSpeed * dt;
+    const minX = ufo.minX ?? (isCve ? 74 : 52);
+    const maxX = ufo.maxX ?? (isCve ? 470 : 430);
+    if (ufo.dir === undefined) ufo.dir = 1;
 
-    const bobAmp = normKind === 'cve-bomber' ? 4 : 3;
-    ufo.y = ufo.baseY + Math.round(Math.sin(ufo.age * 3.6 + ufo.phase) * bobAmp) * 2;
-
-    if (ufo.screenX > WORLD_WIDTH + 48) {
-      state.ufos.splice(u, 1);
+    // CVE Bomber hover-and-drop telegraph state
+    if (ufo.hoverTimer && ufo.hoverTimer > 0) {
+      ufo.hoverTimer -= dt;
+      ufo.y = ufo.baseY + Math.sin(ufo.age * 16) * 1.5;
+      if (ufo.hoverTimer <= 0) {
+        ufo.hoverTimer = 0;
+        state.bombs.push({
+          kind: 'cve',
+          carvesCrater: true,
+          x: state.cameraX + ufo.screenX,
+          y: ufo.y + 12,
+          vx: 0,
+          vy: 155 + state.sectorIndex * 10,
+          age: 0,
+        });
+        ufo.dropCooldown = ufo.dropInterval ?? 3.0;
+        if (ufo.bombsLeft % 2 === 1) ufo.dir *= -1;
+        state.events.push({ type: 'cve-dropped', kind: 'cve-bomber' });
+      }
       continue;
     }
 
-    const triggerScreenX = ufo.nextDropX ?? state.buggy.screenX + (ufo.dropLead ?? 200);
+    const surge = (ufo.surgeAmp ?? 16) * Math.sin(ufo.age * (isCve ? 2.1 : 3.8) + ufo.phase);
+    const currentSpeed = Math.max(64, (ufo.passSpeed ?? 98) + surge);
+    ufo.screenX += ufo.dir * currentSpeed * dt;
+
+    if (!ufo.entered && ufo.screenX >= minX + 12 && ufo.screenX <= maxX - 12) {
+      ufo.entered = true;
+    }
+    if (ufo.entered) {
+      if (ufo.screenX >= maxX) {
+        ufo.screenX = maxX;
+        ufo.dir = -1;
+      } else if (ufo.screenX <= minX) {
+        ufo.screenX = minX;
+        ufo.dir = 1;
+      }
+    } else if (ufo.dir === 1 && ufo.screenX >= maxX) {
+      ufo.entered = true;
+      ufo.dir = -1;
+    } else if (ufo.dir === -1 && ufo.screenX <= minX) {
+      ufo.entered = true;
+      ufo.dir = 1;
+    }
+
+    if (isCve) {
+      // Steady dreadnought cruise altitude
+      ufo.y = ufo.baseY + Math.sin(ufo.age * 1.5 + ufo.phase) * 4;
+    } else {
+      // Agile swooping figure-8 wave motion
+      ufo.y =
+        ufo.baseY +
+        Math.sin(ufo.age * 3.1 + ufo.phase) * 16 +
+        Math.cos(ufo.age * 1.55 + ufo.phase) * 6;
+    }
+
+    const isStage1 = state.sectorIndex === 0 && state.loop === 0;
+    const relLead = ufo.screenX - state.buggy.screenX;
+    // Stage 1 avoids the exact ~165-245px cruise-intercept snipe band so drops stay fair;
+    // Stages 2+ unlock full-corridor pressure requiring speed shifts and active shooting.
+    const inDropZone = isStage1
+      ? isCve
+        ? relLead >= 285 && ufo.screenX <= WORLD_WIDTH - 75
+        : (relLead >= 265 && ufo.screenX <= WORLD_WIDTH - 75) || (relLead >= -25 && relLead <= 95)
+      : relLead >= Math.max(45, ufo.dropLead ?? 90) && ufo.screenX <= WORLD_WIDTH - 70;
+
     if (
+      ufo.entered &&
       ufo.bombsLeft > 0 &&
-      ufo.screenX >= triggerScreenX &&
-      ufo.screenX > state.buggy.screenX + 48 &&
-      ufo.screenX <= WORLD_WIDTH - 75
+      (ufo.dropCooldown ?? 0) <= 0 &&
+      inDropZone
     ) {
       ufo.bombsLeft -= 1;
-      ufo.nextDropX = ufo.screenX + 145;
-      const isCve = normKind === 'cve-bomber';
-      const baseFallVy = 66 + state.sectorIndex * 14 + Math.min(24, state.loop * 10);
-      state.bombs.push({
-        kind: isCve ? 'cve' : 'bug',
-        carvesCrater: isCve,
-        x: state.cameraX + ufo.screenX,
-        y: ufo.y + 12,
-        vx: state.speed * (isCve ? 0.16 : 0.12),
-        vy: baseFallVy,
-        age: 0,
-      });
-      state.events.push({ type: isCve ? 'cve-dropped' : 'bug-dropped', kind: normKind });
+      if (isCve) {
+        ufo.hoverTimer = 0.38;
+        state.events.push({ type: 'cve-telegraph' });
+      } else {
+        state.bombs.push({
+          kind: 'bug',
+          carvesCrater: false,
+          x: state.cameraX + ufo.screenX,
+          y: ufo.y + 12,
+          vx: 0,
+          vy: 150 + state.sectorIndex * 12 + Math.min(24, state.loop * 10),
+          age: 0,
+        });
+        ufo.dropCooldown = ufo.dropInterval ?? 3.2;
+        state.events.push({ type: 'bug-dropped', kind: 'bug-dropper' });
+      }
     }
   }
 

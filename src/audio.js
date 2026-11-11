@@ -558,15 +558,96 @@ export function createAudioController() {
           }
           break;
 
-        case 'cve-dropped':
+        case 'ufo-wave':
+          if (event.hasBugDropper) {
+            // Shimmering high sci-fi tri-orb warble
+            [680, 910, 740, 1020].forEach((hz, idx) => {
+              scheduleOsc({
+                bus: sfxBus,
+                type: 'triangle',
+                from: hz,
+                to: hz * 1.06,
+                startTime: now + idx * 0.045,
+                duration: 0.055,
+                gain: 0.2,
+              });
+            });
+          }
+          if (event.hasCve) {
+            // Deep menacing two-tone dreadnought klaxon
+            scheduleOsc({
+              bus: sfxBus,
+              type: 'sawtooth',
+              from: 185,
+              to: 230,
+              startTime: now + 0.04,
+              duration: 0.14,
+              gain: 0.24,
+            });
+            scheduleOsc({
+              bus: sfxBus,
+              type: 'sawtooth',
+              from: 185,
+              to: 165,
+              startTime: now + 0.2,
+              duration: 0.16,
+              gain: 0.24,
+            });
+          }
+          break;
+
+        case 'bug-dropped':
+          // High fluttering bug-release double chirp
           scheduleOsc({
             bus: sfxBus,
             type: 'square',
-            from: 880,
-            to: 440,
+            from: 1080,
+            to: 640,
             startTime: now,
-            duration: 0.12,
-            gain: 0.17,
+            duration: 0.055,
+            gain: 0.16,
+          });
+          scheduleOsc({
+            bus: sfxBus,
+            type: 'square',
+            from: 920,
+            to: 540,
+            startTime: now + 0.06,
+            duration: 0.055,
+            gain: 0.14,
+          });
+          break;
+
+        case 'cve-telegraph':
+          // Urgent 2-pulse bomb-bay lock-on beep during CVE hover
+          scheduleOsc({
+            bus: sfxBus,
+            type: 'square',
+            from: 740,
+            startTime: now,
+            duration: 0.06,
+            gain: 0.2,
+          });
+          scheduleOsc({
+            bus: sfxBus,
+            type: 'square',
+            from: 740,
+            startTime: now + 0.12,
+            duration: 0.06,
+            gain: 0.2,
+          });
+          break;
+
+        case 'cve-dropped':
+          // Heavy descending CVE warhead whistle
+          scheduleOsc({
+            bus: sfxBus,
+            type: 'sawtooth',
+            from: 920,
+            to: 270,
+            startTime: now,
+            duration: 0.22,
+            gain: 0.22,
           });
           break;
 
@@ -608,26 +689,50 @@ export function createAudioController() {
         case 'ufo-destroyed':
         case 'wave-cleared':
           duckMusic(0.06, 0.32);
-          [980, 760, 580, 430, 300, 190].forEach((hz, idx) => {
+          if (event.kind === 'cve-bomber') {
+            // Deep armored dreadnought detonation
             scheduleOsc({
               bus: sfxBus,
-              type: 'square',
-              from: hz,
-              to: hz * 0.85,
-              startTime: now + idx * 0.036,
-              duration: 0.045,
-              gain: 0.28,
+              type: 'sawtooth',
+              from: 340,
+              to: 48,
+              startTime: now,
+              duration: 0.32,
+              gain: 0.34,
             });
-          });
-          scheduleNoise({
-            bus: sfxBus,
-            startTime: now + 0.04,
-            duration: 0.26,
-            gain: 0.34,
-            filterType: 'bandpass',
-            freqFrom: 1600,
-            freqTo: 240,
-          });
+            scheduleNoise({
+              bus: sfxBus,
+              startTime: now,
+              duration: 0.32,
+              gain: 0.4,
+              filterType: 'lowpass',
+              freqFrom: 1200,
+              freqTo: 140,
+              q: 1.8,
+            });
+          } else {
+            // Sparkling tri-orb plasma shatter
+            [1160, 920, 710, 530, 380, 240].forEach((hz, idx) => {
+              scheduleOsc({
+                bus: sfxBus,
+                type: 'square',
+                from: hz,
+                to: hz * 0.85,
+                startTime: now + idx * 0.034,
+                duration: 0.045,
+                gain: 0.27,
+              });
+            });
+            scheduleNoise({
+              bus: sfxBus,
+              startTime: now + 0.04,
+              duration: 0.24,
+              gain: 0.32,
+              filterType: 'bandpass',
+              freqFrom: 1900,
+              freqTo: 320,
+            });
+          }
           if (event.type === 'wave-cleared') {
             [523.25, 659.25, 783.99, 1046.5].forEach((hz, idx) => {
               scheduleOsc({

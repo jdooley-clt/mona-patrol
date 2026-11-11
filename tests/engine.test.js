@@ -395,40 +395,57 @@ test('Stage 3 (K–O) introduces indestructible mines in tricky combinations and
   assert.equal(state.sectionStats.stonesDestroyed, 1);
 });
 
-test('UFOs always enter from the left edge, pass over the player, and never drop bombs on top of the rover', () => {
-  const state = createGameState({ seed: 2026 });
-  startGame(state, { seed: 2026 });
-  state.course.obstacles = [];
+test('UFOs enter mostly from left with increasing right entries, patrol back and forth until destroyed, and use distinct patterns', () => {
+  const stage1Specs = buildSectorCourse(0, 2026, 0).waves.flatMap((w) => w.ufoSpecs);
+  const stage2Specs = buildSectorCourse(1, 2026, 0).waves.flatMap((w) => w.ufoSpecs);
+  const stage4Specs = buildSectorCourse(3, 2026, 0).waves.flatMap((w) => w.ufoSpecs);
 
-  // Advance until the first wave in B–C spawns (which has allowBombs: true)
-  let sawSpawnLeft = false;
-  let passedOverBuggy = false;
-  while (state.status === 'playing' && state.buggy.worldX < SECTION_LENGTH * 2.4) {
-    const prevCount = state.ufos.length;
-    stepGame(state, 0.04);
-    if (state.ufos.length > prevCount) {
-      for (const u of state.ufos) {
-        if (u.age <= 0.05) {
-          assert.ok(u.screenX < 0, `UFO spawns off left screen edge (got ${u.screenX})`);
-        }
-      }
-      sawSpawnLeft = true;
-    }
-    for (const u of state.ufos) {
-      if (Math.abs(u.screenX - state.buggy.screenX) < 12) {
-        passedOverBuggy = true;
-      }
-    }
-    for (const b of state.bombs) {
-      const bombScreenX = b.x - state.cameraX;
-      // Newly dropped flares always start well ahead of the rover
-      if (b.y < 100) {
-        assert.ok(bombScreenX > state.buggy.screenX + 200, 'bombs only drop well ahead of rover');
-      }
-    }
+  const rightRatio = (specs) => specs.filter((u) => u.enterFrom === 'right').length / specs.length;
+  const r1 = rightRatio(stage1Specs);
+  const r2 = rightRatio(stage2Specs);
+  const r4 = rightRatio(stage4Specs);
+
+  assert.ok(r1 > 0 && r1 < 0.35, `Stage 1 has a small fraction of right entries (got ${r1})`);
+  assert.ok(r4 > r1, `Right-side entries increase as stages advance (${r1} -> ${r2} -> ${r4})`);
+  assert.ok(r4 <= 0.55, 'Majority overall still enter from left');
+
+  // Verify UFOs sweep back and forth across patrol bounds until destroyed rather than exiting
+  const state = createGameState({ seed: 2026, sectorIndex: 1 });
+  startGame(state, { seed: 2026, sectorIndex: 1 });
+  state.course.obstacles = [];
+  for (const w of state.course.waves) {
+    for (const s of w.ufoSpecs) s.dropsCount = 0;
   }
-  assert.equal(sawSpawnLeft, true);
-  assert.equal(passedOverBuggy, true);
+
+  while (state.ufos.length === 0) stepGame(state, 0.04);
+  const ufo = state.ufos[0];
+  let sawRightDir = false;
+  let sawLeftDir = false;
+  let passedOverPlayer = 0;
+  let prevSign = Math.sign(ufo.screenX - state.buggy.screenX);
+
+  for (let i = 0; i < 240; i++) {
+    stepGame(state, 0.04);
+    if (ufo.dir === 1) sawRightDir = true;
+    if (ufo.dir === -1) sawLeftDir = true;
+    const sign = Math.sign(ufo.screenX - state.buggy.screenX);
+    if (sign !== 0 && prevSign !== 0 && sign !== prevSign) {
+      passedOverPlayer += 1;
+    }
+    if (sign !== 0) prevSign = sign;
+  }
+
+  assert.equal(state.ufos.includes(ufo), true, 'Undestroyed UFO remains active overhead');
+  assert.equal(sawRightDir, true);
+  assert.equal(sawLeftDir, true, 'UFO reverses direction to patrol back and forth');
+  assert.ok(passedOverPlayer >= 2, `UFO passes over player multiple times (got ${passedOverPlayer})`);
+
+  const bugUfo = state.ufos.find((u) => u.kind === 'bug-dropper');
+  const cveUfo = state.ufos.find((u) => u.kind === 'cve-bomber');
+  if (bugUfo && cveUfo) {
+    assert.equal(bugUfo.pattern, 'swoop-wave');
+    assert.equal(cveUfo.pattern, 'stalk-hover');
+  }
 });
 
 test('Stage 1 (A–E) achieves >= 90% completion across 100 seeds with basic player reactions and records full stats', () => {

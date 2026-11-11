@@ -1,8 +1,8 @@
-// True 8-bit stepped pixel-art 2D Canvas renderer for Mona Patrol.
-// Features 5 distinct stage palettes & architectural sceneries (A–E Ridge, F–J Octo Metropolis
-// spires, K–O Canary Radar Minefield, P–T Rolling Highlands, U–Z Omega Citadel), canonical
-// Pixel Mona in her 6-wheel rover, Tri-Pod Bug-Dropper UFOs, Armored CVE Crater-Bombers,
-// tricky landmines, and 4-frame tumbling highland boulders.
+// Fine-detail Golden-Age Retro Arcade 2D Canvas renderer for Mona Patrol (640x360 @ DPR).
+// Combines crisp retro pixel sprites & craggy two-tone arcade landscapes with high visual
+// clarity: simple unmistakable road craters, slope-aligned high-contrast mines, full-depth
+// parallax layers behind hill valleys, unmistakable Mona in her 6-wheel pink rover, and
+// visually distinct Tri-Orb Bug-Dropper vs Horned CVE-Bomber saucers.
 
 import {
   WORLD_WIDTH,
@@ -13,604 +13,459 @@ import {
   sectorCheckpointLetters,
 } from './engine.js';
 
-const PX = 2;
-const snap = (v) => Math.round(v / PX) * PX;
-
-// Five distinct stage themes (both Light Candy 8-Bit and Dark Retro Arcade CRT variants)
 const STAGE_THEMES = [
   // Stage 1 (A–E): Lunar Crater Ridge
   {
     light: {
-      sky: '#fff7df', skyBand: '#f7efd4', starA: '#ded4f1', starB: '#ffb7a5',
-      farMtn: '#ded4f1', farShade: '#c3b2e3', midHill: '#c5e7b1', midShade: '#9ed097',
-      roadTop: '#ffb7a5', roadMid: '#e89592', roadDeep: '#d8cde9', pebble: '#c97879', craterPit: '#f3e8cc',
+      skyTop: '#fff7df', skyBot: '#f5ebd0', starA: '#c3b2e3', starB: '#f09d8c',
+      farMtn: '#cbbce6', farRidge: '#e8dff7', midHill: '#9fd49c', midRidge: '#ccf0c2',
+      roadLip: '#7bc96f', roadTop: '#f4a27e', roadMid: '#dc8562', craterShadow: '#33293a',
     },
     dark: {
-      sky: '#181626', skyBand: '#211d33', starA: '#fffdf4', starB: '#96dce2',
-      farMtn: '#3f3459', farShade: '#2e2544', midHill: '#2d574b', midShade: '#224239',
-      roadTop: '#e89592', roadMid: '#b56974', roadDeep: '#362e4d', pebble: '#7d4454', craterPit: '#110e1b',
+      skyTop: '#090b16', skyBot: '#121629', starA: '#fffdf4', starB: '#70d6ff',
+      farMtn: '#1f2d5a', farRidge: '#3b57a8', midHill: '#1c5446', midRidge: '#368f75',
+      roadLip: '#5cd669', roadTop: '#e88b48', roadMid: '#c46c2d', craterShadow: '#070811',
     },
   },
-  // Stage 2 (F–J): Octo Metropolis — teal/blue peaks, green bulbous city spires w/ sunlit gold edges, amber soil
+  // Stage 2 (F–J): Octo Metropolis — inspired by classic alien spire city skyline
   {
     light: {
-      sky: '#e6f6ff', skyBand: '#d2eefc', starA: '#96dce2', starB: '#f5cc66',
-      farMtn: '#9ec5f8', farShade: '#7aaae8', midHill: '#7fd19e', midShade: '#5eb882',
-      roadTop: '#f7ba79', roadMid: '#e59856', roadDeep: '#d6c5e8', pebble: '#c27638', craterPit: '#dff0fa',
+      skyTop: '#e3f4ff', skyBot: '#cde8fa', starA: '#70b8e8', starB: '#f5b841',
+      farMtn: '#7ea8e0', farRidge: '#adcbf5', midHill: '#62ba85', midRidge: '#92e0b0',
+      roadLip: '#52bd64', roadTop: '#f29f58', roadMid: '#d67e3a', craterShadow: '#232b3d',
     },
     dark: {
-      sky: '#0c1228', skyBand: '#141f42', starA: '#96dce2', starB: '#f7d274',
-      farMtn: '#1b3b7a', farShade: '#132a59', midHill: '#256d4b', midShade: '#1b5238',
-      roadTop: '#f09d51', roadMid: '#c4742f', roadDeep: '#2e294a', pebble: '#8c4c19', craterPit: '#080d1f',
+      skyTop: '#050814', skyBot: '#0b132b', starA: '#96dce2', starB: '#f7d274',
+      farMtn: '#12326b', farRidge: '#245bc2', midHill: '#185e3f', midRidge: '#32a872',
+      roadLip: '#4ad658', roadTop: '#ef923e', roadMid: '#c76f22', craterShadow: '#04060f',
     },
   },
-  // Stage 3 (K–O): Canary Minefield — sunset peach/violet sky, plum cliffs, radar dishes, golden-sand road
+  // Stage 3 (K–O): Canary Minefield — twilight sunset & radar arrays
   {
     light: {
-      sky: '#ffefe6', skyBand: '#fde1d3', starA: '#ed9eb7', starB: '#f5cc66',
-      farMtn: '#e8b8d4', farShade: '#d19ab9', midHill: '#f5d491', midShade: '#e0bc72',
-      roadTop: '#f2c97d', roadMid: '#dba858', roadDeep: '#d9c6cf', pebble: '#b58238', craterPit: '#f9e5d8',
+      skyTop: '#ffede3', skyBot: '#fadac9', starA: '#d98cb3', starB: '#e8a838',
+      farMtn: '#cfa0bf', farRidge: '#ebd0e2', midHill: '#deb868', midRidge: '#f7dc9c',
+      roadLip: '#d99b38', roadTop: '#e8b36b', roadMid: '#c98f47', craterShadow: '#36242e',
     },
     dark: {
-      sky: '#241326', skyBand: '#331b36', starA: '#ffb7a5', starB: '#f7d274',
-      farMtn: '#592c54', farShade: '#42203e', midHill: '#634b2b', midShade: '#4d391f',
-      roadTop: '#e0b25b', roadMid: '#b08235', roadDeep: '#3b263d', pebble: '#78531b', craterPit: '#1a0d1c',
+      skyTop: '#160b1c', skyBot: '#291533', starA: '#ffb7a5', starB: '#f7d274',
+      farMtn: '#4a2249', farRidge: '#823f80', midHill: '#573f22', midRidge: '#8f6b3b',
+      roadLip: '#f0b849', roadTop: '#d69747', roadMid: '#ab6f26', craterShadow: '#0d0611',
     },
   },
-  // Stage 4 (P–T): Rolling Highlands — glacier aqua sky, indigo terraced mesas, undulating mint-slate hills
+  // Stage 4 (P–T): Rolling Highlands — glacier canyon mesas & undulating hills
   {
     light: {
-      sky: '#e8faf6', skyBand: '#d4f3ec', starA: '#8a6fb3', starB: '#7fd19e',
-      farMtn: '#b9c8f0', farShade: '#9ab0e3', midHill: '#9de0d0', midShade: '#7ac7b5',
-      roadTop: '#d7b8f3', roadMid: '#b894db', roadDeep: '#c2d6e8', pebble: '#8d6ab5', craterPit: '#daf2ec',
+      skyTop: '#e6faf5', skyBot: '#cef0e8', starA: '#7b8cde', starB: '#5ec788',
+      farMtn: '#99b0de', farRidge: '#c4d4f5', midHill: '#6dc4b0', midRidge: '#a3ebd9',
+      roadLip: '#5bc489', roadTop: '#b996e3', roadMid: '#9771c4', craterShadow: '#222d38',
     },
     dark: {
-      sky: '#0f1f29', skyBand: '#162d3b', starA: '#96dce2', starB: '#c5e7b1',
-      farMtn: '#294366', farShade: '#1e324d', midHill: '#245c59', midShade: '#1b4543',
-      roadTop: '#b08cd9', roadMid: '#8460b0', roadDeep: '#223547', pebble: '#5b3c85', craterPit: '#0a161d',
+      skyTop: '#08131c', skyBot: '#102433', starA: '#96dce2', starB: '#c5e7b1',
+      farMtn: '#1d3654', farRidge: '#366396', midHill: '#1d4f4d', midRidge: '#368c87',
+      roadLip: '#5ce0a8', roadTop: '#9c78cf', roadMid: '#7552a8', craterShadow: '#050b11',
     },
   },
-  // Stage 5 (U–Z): Omega Citadel — royal lavender-rose sky, amethyst peaks, citadel obelisks & arches
+  // Stage 5 (U–Z): Omega Citadel — royal amethyst & energy arches
   {
     light: {
-      sky: '#f5eafa', skyBand: '#ead8f5', starA: '#e03e65', starB: '#f5cc66',
-      farMtn: '#cdb4eb', farShade: '#b294d9', midHill: '#b8e6d4', midShade: '#93cfb8',
-      roadTop: '#ff9eb5', roadMid: '#e07993', roadDeep: '#cbbce6', pebble: '#b54e69', craterPit: '#ecdff5',
+      skyTop: '#f4e8fc', skyBot: '#e5d1f5', starA: '#d63e6c', starB: '#e8b038',
+      farMtn: '#b497db', farRidge: '#dac7f5', midHill: '#85ccb6', midRidge: '#b5f0dd',
+      roadLip: '#52c49c', roadTop: '#f08aa3', roadMid: '#cf637e', craterShadow: '#2e1d38',
     },
     dark: {
-      sky: '#190f29', skyBand: '#26173d', starA: '#ff7b9c', starB: '#f7d274',
-      farMtn: '#47286e', farShade: '#341c54', midHill: '#285954', midShade: '#1d423e',
-      roadTop: '#e87696', roadMid: '#b54c6b', roadDeep: '#2e1f47', pebble: '#802b46', craterPit: '#11091d',
+      skyTop: '#11081f', skyBot: '#1f1038', starA: '#ff7b9c', starB: '#f7d274',
+      farMtn: '#391d5e', farRidge: '#6b3ab0', midHill: '#1f4d48', midRidge: '#3a8f85',
+      roadLip: '#5ce6b8', roadTop: '#de6889', roadMid: '#ad4261', craterShadow: '#090412',
     },
   },
 ];
 
-const COMMON = {
-  ink: '#34313e',
-  outlineDark: '#f4efe2',
-  paper: '#fffdf4',
-  moon: '#fffdf4',
-  moonCrater: '#ded4f1',
-  pink: '#ed9eb7',
-  peach: '#ffb7a5',
-  lavender: '#ded4f1',
-  purple: '#8a6fb3',
-  aqua: '#70d6ff',
-  aquaSoft: '#96dce2',
-  mint: '#c5e7b1',
-  cityGreen: '#5ec788',
-  cityDark: '#399660',
-  leaf: '#4ea870',
-  ruby: '#d62454',
-  gold: '#f5cc66',
-  hudLight: '#fffdf4',
-  hudDark: '#2a253b',
-};
-
-const GLYPHS = {
-  A: ['010', '101', '111', '101', '101'],
-  B: ['110', '101', '110', '101', '110'],
-  C: ['011', '100', '100', '100', '011'],
-  D: ['110', '101', '101', '101', '110'],
-  E: ['111', '100', '110', '100', '111'],
-  F: ['111', '100', '110', '100', '100'],
-  G: ['011', '100', '101', '101', '011'],
-  H: ['101', '101', '111', '101', '101'],
-  I: ['111', '010', '010', '010', '111'],
-  J: ['001', '001', '001', '101', '010'],
-  K: ['101', '101', '110', '101', '101'],
-  L: ['100', '100', '100', '100', '111'],
-  M: ['101', '111', '111', '101', '101'],
-  N: ['101', '111', '111', '111', '101'],
-  O: ['010', '101', '101', '101', '010'],
-  P: ['110', '101', '110', '100', '100'],
-  Q: ['010', '101', '101', '111', '011'],
-  R: ['110', '101', '110', '101', '101'],
-  S: ['011', '100', '010', '001', '110'],
-  T: ['111', '010', '010', '010', '010'],
-  U: ['101', '101', '101', '101', '111'],
-  V: ['101', '101', '101', '101', '010'],
-  W: ['101', '101', '111', '111', '101'],
-  X: ['101', '101', '010', '101', '101'],
-  Y: ['101', '101', '010', '010', '010'],
-  Z: ['111', '001', '010', '100', '111'],
-  '0': ['111', '101', '101', '101', '111'],
-  '1': ['010', '110', '010', '010', '111'],
-  '2': ['110', '001', '010', '100', '111'],
-  '3': ['110', '001', '010', '001', '110'],
-  '4': ['101', '101', '111', '001', '001'],
-  '5': ['111', '100', '110', '001', '110'],
-  '6': ['011', '100', '111', '101', '111'],
-  '7': ['111', '001', '010', '010', '010'],
-  '8': ['111', '101', '111', '101', '111'],
-  '9': ['111', '101', '111', '001', '110'],
-  '!': ['010', '010', '010', '000', '010'],
-  '<': ['001', '010', '100', '010', '001'],
-  '>': ['100', '010', '001', '010', '100'],
-  '-': ['000', '000', '111', '000', '000'],
-  '+': ['000', '010', '111', '010', '000'],
-  ' ': ['000', '000', '000', '000', '000'],
-};
-
-const MONA_PILOT_A = [
-  '.....kkk........kkk....',
-  '.....kkkk......kkkk....',
-  '.....kkkkkkkkkkkkkk....',
-  '....kkkkkkkkkkkkkkkk...',
-  '....kkiiiiiiiiiiiikk...',
-  '...kkiiiiiiiiiiiiiikk..',
-  '...kkiikkiiiiiikkiikk..',
-  '...kkiikkiiiiiikkiikk..',
-  '...kkiikkiiiiiikkiikk..',
-  '...kkicciiikkiiiccikk..',
-  '....kkiiiiiiiiiiiikk...',
-  '.kk..kkkkkkkkkkkkkk....',
-  'kkkk...kkkkkkkkkkkqq...',
-  '.kkk....kkkkkkkkkqqq...',
+// Fine 1px-grid canonical Mona sprite (30x19 @ 1px -> drawn at 1.5x or integer 1px/2px?
+// Wait: 28x18 @ 1.5px -> let's use a 28x19 map drawn at integer 1px on 640x360? 28px wide is crisp AND detailed!
+// Even better: 34x22 @ 1px = 34x22 logical px (68x44 physical retina pixels at DPR 2!!))
+const MONA_FINE_A = [
+  '.......kkkk............kkkk.......',
+  '......kkkkkk..........kkkkkk......',
+  '......kkkkkkk........kkkkkkk......',
+  '.....kkkkkkkkkkkkkkkkkkkkkkkk.....',
+  '....kkkkkkkkkkkkkkkkkkkkkkkkkk....',
+  '...kkkkiiiiiiiiiiiiiiiiiiiikkkk...',
+  '...kkkiiiiiiiiiiiiiiiiiiiiiikkk...',
+  '..kkkiiiiiiiiiiiiiiiiiiiiiiiikkk..',
+  '..kkiiiikkkkiiiiiiiiiikkkkiiiikk..',
+  '..kkiiiikkwkiiiiiiiiiikkwkiiiikk..',
+  '..kkiiiikkkkiiiiiiiiiikkkkiiiikk..',
+  '..kkiiiikkkkiiiiiiiiiikkkkiiiikk..',
+  '..kkiiicccciiiikkkkiiiicccciiikk..',
+  '...kkiiiiiiiiiiikkiiiiiiiiiiikk...',
+  '...kkkiiiiiiiiiiiiiiiiiiiiiikkk...',
+  '.kk.kkkkkkkkkkkkkkkkkkkkkkkkkk....',
+  'kkkk..kkkkkkkkkkkkkkkkkkkkkkqqq...',
+  'kkkk...kkkkkkkkkkkkkkkkkkkkqqqqq..',
+  '.kkk.....kkkkkkkkkkkkkkkkkqq..qq..',
 ];
 
-const MONA_PILOT_B = [
-  '.....kkk........kkk....',
-  '.....kkkk......kkkk....',
-  '.....kkkkkkkkkkkkkk....',
-  '....kkkkkkkkkkkkkkkk...',
-  '....kkiiiiiiiiiiiikk...',
-  '...kkiiiiiiiiiiiiiikk..',
-  '...kkiikkiiiiiikkiikk..',
-  '...kkiikkiiiiiikkiikk..',
-  '...kkiikkiiiiiikkiikk..',
-  '...kkicciiikkiiiccikk..',
-  '.kk.kkiiiiiiiiiiiikk...',
-  'kkkk.kkkkkkkkkkkkkk....',
-  '.kkk...kkkkkkkkkkkqq...',
-  '........kkkkkkkkkqqq...',
+const MONA_FINE_B = [
+  '.......kkkk............kkkk.......',
+  '......kkkkkk..........kkkkkk......',
+  '......kkkkkkk........kkkkkkk......',
+  '.....kkkkkkkkkkkkkkkkkkkkkkkk.....',
+  '....kkkkkkkkkkkkkkkkkkkkkkkkkk....',
+  '...kkkkiiiiiiiiiiiiiiiiiiiikkkk...',
+  '...kkkiiiiiiiiiiiiiiiiiiiiiikkk...',
+  '..kkkiiiiiiiiiiiiiiiiiiiiiiiikkk..',
+  '..kkiiiikkkkiiiiiiiiiikkkkiiiikk..',
+  '..kkiiiikkwkiiiiiiiiiikkwkiiiikk..',
+  '..kkiiiikkkkiiiiiiiiiikkkkiiiikk..',
+  '..kkiiiikkkkiiiiiiiiiikkkkiiiikk..',
+  '..kkiiicccciiiikkkkiiiicccciiikk..',
+  '.kk.kkiiiiiiiiiiikkiiiiiiiiiiikk..',
+  'kkkk.kkkiiiiiiiiiiiiiiiiiiiiiikkk.',
+  '.kkk..kkkkkkkkkkkkkkkkkkkkkkkk....',
+  '.......kkkkkkkkkkkkkkkkkkkkkqqq...',
+  '........kkkkkkkkkkkkkkkkkkkqqqqq..',
+  '.........kkkkkkkkkkkkkkkkkqq..qq..',
 ];
 
-// UFO Type 1: `bug-dropper` — Aqua Tri-Orb Cluster Saucer (inspired by classic tri-pod squadrons)
-const BUG_UFO_A = [
-  '.......kkkkkk.......',
-  '......kqqiiqqk......',
-  '......kqqqqqqk......',
-  '.......kkkkkk.......',
-  '..kkkkkk..kkkkkkkk..',
-  '.kqqiiqqkkqqiiqqqk..',
-  '.kqqqqqqkkqqqqqqqk..',
-  '..kkkkkk..kkkkkkkk..',
-  '....kk........kk....',
-  '...kk..........kk...',
-];
-
-const BUG_UFO_B = [
-  '.......kkkkkk.......',
-  '......kqqqqqqk......',
-  '......kqqiiqqk......',
-  '.......kkkkkk.......',
-  '..kkkkkk..kkkkkkkk..',
-  '.kqqqqqqkkqqqqqqqk..',
-  '.kqqiiqqkkqqiiqqqk..',
-  '..kkkkkk..kkkkkkkk..',
-  '.....kk......kk.....',
-  '......kk....kk......',
-];
-
-// UFO Type 2: `cve-bomber` — Crimson & Gold Horned Heavy Warhead Saucer
-const CVE_UFO_A = [
-  '..kk............kk..',
-  '...kk..kkkkkk..kk...',
-  '....kkggggggggkk....',
-  '..kkkggiiiggiiggkkk.',
-  '.kkkkkkkkkkkkkkkkkk.',
-  'krrrrrrrrrrrrrrrrrrk',
-  'krriirrrgggggrriirrk',
-  '.kkkkkkkkkkkkkkkkkk.',
-  '......kkkkkkkk......',
-  '.......krrrrk.......',
-];
-
-const CVE_UFO_B = [
-  '..kk............kk..',
-  '...kk..kkkkkk..kk...',
-  '....kkggggggggkk....',
-  '..kkkggiigggiiggkkk.',
-  '.kkkkkkkkkkkkkkkkkk.',
-  'krrrrrrrrrrrrrrrrrrk',
-  'krrgggggrriirrrgggkr',
-  '.kkkkkkkkkkkkkkkkkk.',
-  '......kkkkkkkk......',
-  '.......kggggk.......',
-];
-
-// Dropped "Bug" (explodes on contact, flapping pixel wings)
-const BUG_DROP_A = [
-  'kk....kk',
-  '.kkkkkk.',
-  'kkpiiipk',
-  '.kppppk.',
-  'kk.kk.kk',
-];
-
-const BUG_DROP_B = [
-  '.kk..kk.',
-  'kkkkkkkk',
-  '.kpiipk.',
-  'kkppppkk',
-  '.k....k.',
-];
-
-// Dropped "CVE" warhead (creates a crater on road impact!)
-const CVE_DROP = [
-  '.kkkkkk.',
-  '.kggggk.',
-  'kkrggkrk',
-  'kkriirkk',
-  '.krrrrk.',
-  '..kkkk..',
-  '...kk...',
-];
-
-const ROCK_SMALL_MAP = [
-  '....kkkkk....',
-  '..kkllllllk..',
-  '.klliiillllk.',
-  'klliilllllllk',
-  'kllllllllsssk',
-  'klllllllssssk',
-  'kllllllsssssk',
-  'klllllssssssk',
-  'kllllsssssssk',
-  '.ksssssssssk.',
-  '..kkkkkkkkk..',
-];
-
-const ROCK_TALL_MAP = [
-  '.....kkkkkk.....',
-  '...kkllllllkk...',
-  '..klliiilllllk..',
-  '.klliillllllllk.',
-  '.klllllllllsssk.',
-  'kllllllllllssssk',
-  'klllkkllllsssssk',
-  'kllliillllsssssk',
-  'kllllllllssssssk',
-  'klllllllsssssssk',
-  'kllllllssssssssk',
-  'kllllllssssssssk',
-  'klllllsssssssssk',
-  '.klllsssssssssk.',
-  '.kssssssssssssk.',
-  '..kkkkkkkkkkkk..',
-];
-
-// 2-frame rotating 12x12 (@ 2px = 24x24) rolling highland stone
-const ROLLING_STONE_A = [
-  '...kkkkkk...',
-  '.kkggggggkk.',
-  'kggiiggggggk',
-  'kggiiggggssk',
-  'kggggkkggssk',
-  'kgggkkkksssk',
-  'kggggkkssssk',
-  'kgggggsssssk',
-  'kggggssssssk',
-  'kgggsssssssk',
-  '.kksssssskk.',
-  '...kkkkkk...',
-];
-
-const ROLLING_STONE_B = [
-  '...kkkkkk...',
-  '.kkggggggkk.',
-  'kggggggiigk.',
-  'kggggggiigsk',
-  'kggkkggggssk',
-  'ksskkkkggssk',
-  'kssskkggsssk',
-  'kssssggssssk',
-  'kssssssssssk',
-  'kgggsssssssk',
-  '.kksssssskk.',
-  '...kkkkkk...',
-];
-
-const WHEEL_A = [
-  '.kkkkk.',
-  'kkkkkkk',
-  'kkkikkk',
-  'kkiikkk',
-  'kkkikkk',
-  'kkkkkkk',
-  '.kkkkk.',
-];
-
-const WHEEL_B = [
-  '.kkkkk.',
-  'kkkkkkk',
-  'kkikikk',
-  'kkk.kkk',
-  'kkikikk',
-  'kkkkkkk',
-  '.kkkkk.',
-];
-
-function pxRect(ctx, x, y, w, h, color) {
-  ctx.fillStyle = color;
-  ctx.fillRect(snap(x), snap(y), snap(w), snap(h));
-}
-
-function pxFrame(ctx, x, y, w, h, fill, border = COMMON.ink) {
-  pxRect(ctx, x, y, w, h, border);
-  pxRect(ctx, x + PX, y + PX, w - PX * 2, h - PX * 2, fill);
-}
-
-function drawBitmapText(ctx, text, x, y, scale = 2, color = COMMON.ink) {
-  let cursor = snap(x);
-  const top = snap(y);
-  for (const ch of String(text).toUpperCase()) {
-    const g = GLYPHS[ch] ?? GLYPHS[' '];
-    for (let gy = 0; gy < g.length; gy++) {
-      const row = g[gy];
-      for (let gx = 0; gx < row.length; gx++) {
-        if (row[gx] === '1') {
-          ctx.fillStyle = color;
-          ctx.fillRect(cursor + gx * scale, top + gy * scale, scale, scale);
-        }
-      }
-    }
-    cursor += scale * 4;
-  }
-}
-
-function drawSprite(ctx, map, x, y, colors, pixelSize = PX) {
-  const ox = snap(x);
-  const oy = snap(y);
+function drawPixelSprite1x(ctx, map, x, y, colors) {
+  const ox = Math.round(x);
+  const oy = Math.round(y);
   for (let r = 0; r < map.length; r++) {
-    const line = map[r];
-    for (let c = 0; c < line.length; c++) {
-      const ch = line[c];
+    const row = map[r];
+    for (let c = 0; c < row.length; c++) {
+      const ch = row[c];
       if (ch === '.' || !colors[ch]) continue;
       ctx.fillStyle = colors[ch];
-      ctx.fillRect(ox + c * pixelSize, oy + r * pixelSize, pixelSize, pixelSize);
+      ctx.fillRect(ox + c, oy + r, 1, 1);
     }
   }
 }
 
-function farMtnHeight(wx, sectorIdx) {
-  const col = Math.floor(wx / 8);
+function farCragHeight(wx, sectorIdx) {
   if (sectorIdx === 3) {
-    // Flat-topped canyon mesas in Stage 4
-    const raw = 186 + Math.sin(col * 0.08) * 28;
-    return Math.round(raw / 14) * 14;
+    // Terraced canyon plateaus with fine crags
+    const plateau = Math.sin(wx * 0.006) * 28;
+    const stepped = Math.round(plateau / 10) * 10;
+    const micro = Math.sin(wx * 0.05) * 2;
+    return 182 + stepped + micro;
   }
-  const h = 184 + Math.sin(col * 0.09 + sectorIdx) * 32 + Math.cos(col * 0.23) * 16;
-  return Math.round(h / 6) * 6;
+  // Craggy arcade mountain peaks (multi-harmonic jagged silhouette)
+  return (
+    182 +
+    Math.sin(wx * 0.008 + sectorIdx) * 28 +
+    Math.cos(wx * 0.021 + sectorIdx * 1.7) * 14 +
+    Math.sin(wx * 0.063) * 5
+  );
 }
 
-function midHillHeight(wx, sectorIdx) {
-  const col = Math.floor(wx / 8);
-  const h = 234 + Math.sin(col * 0.14 + 1.4 + sectorIdx * 0.8) * 16 + Math.cos(col * 0.31) * 6;
-  return Math.round(h / 4) * 4;
+function midRidgeHeight(wx, sectorIdx) {
+  return (
+    234 +
+    Math.sin(wx * 0.013 + 1.4 + sectorIdx * 0.8) * 15 +
+    Math.cos(wx * 0.037) * 6 +
+    Math.sin(wx * 0.09) * 2
+  );
 }
 
-// Stage-specific midground architecture & scenery!
-function drawStageScenery(ctx, sectorIdx, midScroll, border, stagePal) {
+function drawStageBuildings(ctx, sectorIdx, midScroll, stagePal, dark) {
+  const floorY = 336; // Extends well below deepest Stage 4 valley so zero gaps ever appear!
+
   if (sectorIdx === 0) {
-    // Stage 1 (A–E): Small lunar REPO domes & antennae
-    const period = 256;
+    // Stage 1 (A–E): Clean retro lunar domes & comm antennae
+    const period = 260;
     const first = Math.floor(midScroll / period) * period;
     for (let dx = first; dx < midScroll + WORLD_WIDTH + period; dx += period) {
-      const sx = snap(dx - midScroll);
-      const baseY = midHillHeight(dx, sectorIdx);
-      pxRect(ctx, sx + 12, baseY - 26, PX, 12, border);
-      pxRect(ctx, sx + 10, baseY - 30, 6, 6, COMMON.pink);
-      pxFrame(ctx, sx, baseY - 16, 28, 16, COMMON.paper, border);
-      pxFrame(ctx, sx + 4, baseY - 20, 20, 6, COMMON.aquaSoft, border);
-      pxRect(ctx, sx + 10, baseY - 10, 8, 8, COMMON.ink);
+      const sx = Math.round(dx - midScroll);
+      const baseY = Math.round(midRidgeHeight(dx, sectorIdx)) + 4;
+      // Mast
+      ctx.fillStyle = '#34313e';
+      ctx.fillRect(sx + 13, baseY - 28, 2, 14);
+      ctx.fillStyle = '#ff7b9c';
+      ctx.fillRect(sx + 11, baseY - 31, 6, 4);
+      // Dome
+      ctx.fillStyle = dark ? '#29324d' : '#fffdf4';
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(sx + 14, baseY - 4, 13, Math.PI, 0);
+      ctx.lineTo(sx + 27, baseY + 12);
+      ctx.lineTo(sx + 1, baseY + 12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Lit visor window
+      ctx.fillStyle = '#70d6ff';
+      ctx.fillRect(sx + 7, baseY - 11, 14, 4);
     }
     return;
   }
 
   if (sectorIdx === 1) {
-    // Stage 2 (F–J): Octo Metropolis — Futuristic bulbous green/gold city towers with
-    // lit window slits & V-antennae (homage to classic Point F–J alien skyline!)
-    const period = 152;
+    // Stage 2 (F–J): Octo Metropolis — Bulbous emerald futuristic city spires with
+    // warm sunlit yellow right-side shading & lit window slits (classic Point F–J homage!)
+    const period = 136;
     const first = Math.floor(midScroll / period) * period;
     for (let dx = first; dx < midScroll + WORLD_WIDTH + period; dx += period) {
       const variant = Math.abs(Math.floor(dx / period)) % 3;
-      const sx = snap(dx - midScroll);
-      const baseY = GROUND_Y - 8;
+      const sx = Math.round(dx - midScroll);
+      const baseTop = 278;
+
+      const bodyGreen = dark ? '#1f8a4c' : '#45b874';
+      const sunGold = '#f0cf56';
+      const winDark = '#0b1911';
 
       if (variant === 0) {
-        // Tall tiered bulbous spire with sunlit gold right highlight
-        pxFrame(ctx, sx + 8, baseY - 76, 36, 76, COMMON.cityGreen, border);
-        pxRect(ctx, sx + 34, baseY - 74, 8, 72, COMMON.gold);
-        pxFrame(ctx, sx, baseY - 56, 52, 22, COMMON.cityGreen, border);
-        pxRect(ctx, sx + 40, baseY - 54, 10, 18, COMMON.gold);
-        // Twin rooftop spires
-        pxRect(ctx, sx + 18, baseY - 90, PX, 14, border);
-        pxRect(ctx, sx + 32, baseY - 86, PX, 10, border);
-        // Lit pixel window rows
-        for (let wx = sx + 6; wx < sx + 40; wx += 8) {
-          pxRect(ctx, wx, baseY - 48, 4, 4, COMMON.ink);
+        // Tall tiered bulbous spire
+        ctx.fillStyle = bodyGreen;
+        ctx.fillRect(sx + 10, baseTop - 78, 32, floorY - (baseTop - 78));
+        ctx.fillStyle = sunGold;
+        ctx.fillRect(sx + 34, baseTop - 76, 8, floorY - (baseTop - 76));
+
+        // Bulbous mid pod
+        ctx.fillStyle = bodyGreen;
+        ctx.beginPath();
+        ctx.roundRect(sx + 2, baseTop - 58, 48, 22, 9);
+        ctx.fill();
+        ctx.fillStyle = sunGold;
+        ctx.fillRect(sx + 40, baseTop - 54, 8, 14);
+
+        // Crown dome + twin antennae
+        ctx.fillStyle = bodyGreen;
+        ctx.beginPath();
+        ctx.roundRect(sx + 8, baseTop - 86, 36, 14, 7);
+        ctx.fill();
+        ctx.fillStyle = sunGold;
+        ctx.fillRect(sx + 12, baseTop - 98, 2, 12);
+        ctx.fillRect(sx + 36, baseTop - 94, 2, 10);
+
+        // Window slits
+        ctx.fillStyle = winDark;
+        for (let wx = sx + 8; wx < sx + 42; wx += 6) {
+          ctx.fillRect(wx, baseTop - 49, 3, 3);
         }
-        for (let wy = baseY - 68; wy < baseY - 16; wy += 14) {
-          pxRect(ctx, sx + 14, wy, 14, 4, COMMON.ink);
+        for (let wy = baseTop - 72; wy < baseTop - 16; wy += 11) {
+          ctx.fillRect(sx + 15, wy, 14, 2);
         }
       } else if (variant === 1) {
-        // Wide mushroom saucer tower with V-antenna
-        pxFrame(ctx, sx + 14, baseY - 52, 28, 52, COMMON.cityGreen, border);
-        pxRect(ctx, sx + 32, baseY - 50, 8, 48, COMMON.gold);
-        pxFrame(ctx, sx - 2, baseY - 68, 60, 20, COMMON.cityGreen, border);
-        pxRect(ctx, sx + 44, baseY - 66, 12, 16, COMMON.gold);
-        // V-antenna
-        pxRect(ctx, sx + 22, baseY - 78, 4, 10, border);
-        pxRect(ctx, sx + 32, baseY - 78, 4, 10, border);
-        for (let wx = sx + 6; wx < sx + 46; wx += 8) {
-          pxRect(ctx, wx, baseY - 60, 4, 4, COMMON.ink);
+        // Wide saucer-head observation tower with V-antennae
+        ctx.fillStyle = bodyGreen;
+        ctx.fillRect(sx + 16, baseTop - 52, 24, floorY - (baseTop - 52));
+        ctx.fillStyle = sunGold;
+        ctx.fillRect(sx + 33, baseTop - 50, 7, floorY - (baseTop - 50));
+
+        ctx.fillStyle = bodyGreen;
+        ctx.beginPath();
+        ctx.ellipse(sx + 28, baseTop - 58, 28, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = sunGold;
+        ctx.beginPath();
+        ctx.ellipse(sx + 35, baseTop - 58, 18, 9, 0, -0.7, 0.7);
+        ctx.fill();
+
+        // V-antennae
+        ctx.strokeStyle = bodyGreen;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx + 25, baseTop - 68);
+        ctx.lineTo(sx + 19, baseTop - 80);
+        ctx.moveTo(sx + 31, baseTop - 68);
+        ctx.lineTo(sx + 37, baseTop - 80);
+        ctx.stroke();
+
+        ctx.fillStyle = winDark;
+        for (let wx = sx + 8; wx <= sx + 44; wx += 6) {
+          ctx.fillRect(wx, baseTop - 59, 4, 2);
         }
       } else {
-        // Twin connected bio-domes
-        pxFrame(ctx, sx + 4, baseY - 62, 28, 62, COMMON.cityDark, border);
-        pxFrame(ctx, sx + 26, baseY - 46, 26, 46, COMMON.cityGreen, border);
-        pxRect(ctx, sx + 42, baseY - 44, 8, 42, COMMON.gold);
-        pxRect(ctx, sx + 16, baseY - 74, PX, 12, border);
-        pxRect(ctx, sx + 10, baseY - 52, 12, 4, COMMON.gold);
-        pxRect(ctx, sx + 10, baseY - 38, 12, 4, COMMON.gold);
+        // Twin bio-towers
+        ctx.fillStyle = dark ? '#176e3c' : '#369e60';
+        ctx.beginPath();
+        ctx.roundRect(sx + 4, baseTop - 64, 24, floorY - (baseTop - 64), 8);
+        ctx.fill();
+
+        ctx.fillStyle = bodyGreen;
+        ctx.beginPath();
+        ctx.roundRect(sx + 24, baseTop - 46, 24, floorY - (baseTop - 46), 8);
+        ctx.fill();
+        ctx.fillStyle = sunGold;
+        ctx.fillRect(sx + 41, baseTop - 40, 6, floorY - (baseTop - 40));
+
+        ctx.fillStyle = winDark;
+        for (let wy = baseTop - 54; wy < baseTop - 16; wy += 10) {
+          ctx.fillRect(sx + 9, wy, 12, 2);
+        }
       }
     }
     return;
   }
 
   if (sectorIdx === 2) {
-    // Stage 3 (K–O): Canary Minefield — Industrial radar dishes & warning gantries
-    const period = 196;
+    // Stage 3 (K–O): Canary Minefield — Parabolic radar dishes & comm towers
+    const period = 190;
     const first = Math.floor(midScroll / period) * period;
     for (let dx = first; dx < midScroll + WORLD_WIDTH + period; dx += period) {
-      const sx = snap(dx - midScroll);
-      const baseY = midHillHeight(dx, sectorIdx);
-      // Lattice tower legs
-      pxRect(ctx, sx + 8, baseY - 44, 4, 44, border);
-      pxRect(ctx, sx + 24, baseY - 44, 4, 44, border);
-      pxRect(ctx, sx + 8, baseY - 26, 20, 4, border);
-      // Stepped parabolic dish
-      pxFrame(ctx, sx, baseY - 58, 36, 14, COMMON.lavender, border);
-      pxRect(ctx, sx + 16, baseY - 68, 4, 10, border);
-      pxRect(ctx, sx + 14, baseY - 72, 8, 6, COMMON.ruby);
+      const sx = Math.round(dx - midScroll);
+      const baseY = Math.round(midRidgeHeight(dx, sectorIdx)) + 6;
+      ctx.strokeStyle = dark ? '#a86b9c' : '#5e3d58';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx + 8, floorY);
+      ctx.lineTo(sx + 16, baseY - 38);
+      ctx.lineTo(sx + 24, floorY);
+      ctx.moveTo(sx + 11, baseY - 18);
+      ctx.lineTo(sx + 21, baseY - 18);
+      ctx.stroke();
+
+      // Dish
+      ctx.fillStyle = dark ? '#d99ec9' : '#fffdf4';
+      ctx.beginPath();
+      ctx.arc(sx + 16, baseY - 44, 14, 0.25 * Math.PI, 0.95 * Math.PI);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#ff4d6d';
+      ctx.fillRect(sx + 15, baseY - 56, 3, 10);
+      ctx.fillRect(sx + 14, baseY - 58, 5, 4);
     }
     return;
   }
 
   if (sectorIdx === 3) {
-    // Stage 4 (P–T): Rolling Highlands — Suspension bridge pylons & beacon towers
-    const period = 220;
+    // Stage 4 (P–T): Rolling Highlands — Tall bridge pylons extending deep behind valleys
+    const period = 216;
     const first = Math.floor(midScroll / period) * period;
     for (let dx = first; dx < midScroll + WORLD_WIDTH + period; dx += period) {
-      const sx = snap(dx - midScroll);
-      const baseY = midHillHeight(dx, sectorIdx);
-      pxFrame(ctx, sx + 6, baseY - 64, 16, 64, stagePal.farMtn, border);
-      pxFrame(ctx, sx, baseY - 52, 28, 8, COMMON.gold, border);
-      pxFrame(ctx, sx + 2, baseY - 72, 24, 10, COMMON.aquaSoft, border);
+      const sx = Math.round(dx - midScroll);
+      const baseY = Math.round(midRidgeHeight(dx, sectorIdx));
+      ctx.fillStyle = dark ? '#294c66' : '#6d8db5';
+      ctx.fillRect(sx + 8, baseY - 58, 12, floorY - (baseY - 58));
+      ctx.fillStyle = '#f5cc66';
+      ctx.fillRect(sx + 3, baseY - 44, 22, 5);
+      ctx.fillStyle = '#70d6ff';
+      ctx.fillRect(sx + 5, baseY - 62, 18, 6);
     }
     return;
   }
 
-  // Stage 5 (U–Z): Omega Citadel — Grand obelisks, energy arches & crystal spires
+  // Stage 5 (U–Z): Omega Citadel — Twin obelisks & energy arches
   const period = 176;
   const first = Math.floor(midScroll / period) * period;
   for (let dx = first; dx < midScroll + WORLD_WIDTH + period; dx += period) {
-    const sx = snap(dx - midScroll);
-    const baseY = GROUND_Y - 6;
-    pxFrame(ctx, sx + 4, baseY - 74, 16, 74, COMMON.purple, border);
-    pxFrame(ctx, sx + 36, baseY - 74, 16, 74, COMMON.purple, border);
-    pxFrame(ctx, sx, baseY - 86, 56, 16, COMMON.lavender, border);
-    pxRect(ctx, sx + 24, baseY - 98, 8, 12, COMMON.gold);
-    pxRect(ctx, sx + 12, baseY - 80, 32, 4, COMMON.ruby);
+    const sx = Math.round(dx - midScroll);
+    const baseTop = 274;
+    ctx.fillStyle = dark ? '#4d2b7a' : '#8a66ba';
+    ctx.fillRect(sx + 6, baseTop - 68, 12, floorY - (baseTop - 68));
+    ctx.fillRect(sx + 34, baseTop - 68, 12, floorY - (baseTop - 68));
+    ctx.fillStyle = '#f5cc66';
+    ctx.fillRect(sx + 2, baseTop - 76, 48, 9);
+    ctx.fillStyle = '#ff4d79';
+    ctx.fillRect(sx + 10, baseTop - 73, 32, 3);
   }
 }
 
 function drawSkyAndParallax(ctx, state, stagePal, reducedMotion, dark) {
-  const border = dark ? COMMON.outlineDark : COMMON.ink;
   const sectorIdx = state.sectorIndex ?? 0;
+  const floorY = 338; // Extends past deepest hill valley (`y = 304`) so zero background gaps occur!
 
-  pxRect(ctx, 0, 0, WORLD_WIDTH, GROUND_Y, stagePal.sky);
-  pxRect(ctx, 0, 0, WORLD_WIDTH, 54, stagePal.skyBand);
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, floorY);
+  skyGrad.addColorStop(0, stagePal.skyTop);
+  skyGrad.addColorStop(1, stagePal.skyBot);
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-  // Stars
-  const starOffset = reducedMotion ? 0 : Math.floor((state.cameraX * 0.05) / PX) * PX;
+  // Crisp 1px-2px twinkling stars
+  const starOffset = reducedMotion ? 0 : state.cameraX * 0.05;
   const starCoords = [
-    [52, 24], [138, 42], [224, 20], [318, 46], [412, 26], [578, 36], [96, 78], [276, 72], [458, 68],
+    [52, 24], [138, 42], [224, 20], [318, 48], [412, 26], [578, 38],
+    [96, 80], [276, 74], [458, 68], [186, 102], [528, 94],
   ];
   for (const [idx, [sx, sy]] of starCoords.entries()) {
-    const px = (((sx - starOffset) % WORLD_WIDTH) + WORLD_WIDTH) % WORLD_WIDTH;
+    const px = Math.round((((sx - starOffset) % WORLD_WIDTH) + WORLD_WIDTH) % WORLD_WIDTH);
     const blink = !reducedMotion && Math.floor(state.elapsed * 3 + idx) % 5 === 0;
-    const col = idx % 2 === 0 ? stagePal.starA : stagePal.starB;
+    ctx.fillStyle = idx % 2 === 0 ? stagePal.starA : stagePal.starB;
     if (blink) {
-      pxRect(ctx, px - 4, sy, 10, 2, col);
-      pxRect(ctx, px, sy - 4, 2, 10, col);
+      ctx.fillRect(px - 3, sy, 7, 1);
+      ctx.fillRect(px, sy - 3, 1, 7);
     } else {
-      pxRect(ctx, px, sy, 4, 4, col);
+      ctx.fillRect(px, sy, 2, 2);
     }
   }
 
-  // Lunar / Ringed planet in upper right (varies subtly by stage!)
-  const moonX = 516;
-  const moonY = 30;
-  const spans = [12, 20, 26, 30, 32, 34, 34, 34, 32, 30, 26, 20, 12];
-  spans.forEach((w, row) => {
-    pxRect(ctx, moonX - w / 2 - 2, moonY + row * 3, w + 4, 4, border);
-  });
-  spans.forEach((w, row) => {
-    if (row > 0 && row < spans.length - 1) {
-      pxRect(
-        ctx,
-        moonX - w / 2,
-        moonY + row * 3,
-        w,
-        4,
-        sectorIdx % 2 === 1 ? COMMON.gold : COMMON.moon,
-      );
-    }
-  });
+  // Planet / Moon in upper-right sky
+  const moonX = 524;
+  const moonY = 48;
+  ctx.fillStyle = sectorIdx % 2 === 1 ? '#f7d97e' : '#fffdf4';
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, 15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(120, 105, 155, 0.28)';
+  ctx.beginPath();
+  ctx.arc(moonX - 4, moonY - 3, 3.5, 0, Math.PI * 2);
+  ctx.arc(moonX + 5, moonY + 4, 2.5, 0, Math.PI * 2);
+  ctx.fill();
   if (sectorIdx >= 2) {
-    // Pixel planetary ring in Stages 3–5!
-    pxRect(ctx, moonX - 28, moonY + 18, 56, 4, COMMON.pink);
-  } else {
-    pxRect(ctx, moonX - 8, moonY + 12, 6, 6, COMMON.moonCrater);
-    pxRect(ctx, moonX + 4, moonY + 22, 8, 6, COMMON.moonCrater);
+    ctx.strokeStyle = '#ff8fab';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(moonX, moonY + 1, 26, 5, -0.18, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
-  // Far stepped mountain range
-  const farScroll = reducedMotion ? 0 : Math.floor((state.cameraX * 0.16) / 8) * 8;
-  for (let sx = 0; sx < WORLD_WIDTH; sx += 8) {
-    const wx = sx + farScroll;
-    const h = farMtnHeight(wx, sectorIdx);
-    const nextH = farMtnHeight(wx + 8, sectorIdx);
-    pxRect(ctx, sx, h, 8, GROUND_Y - h, nextH > h ? stagePal.farShade : stagePal.farMtn);
-    pxRect(ctx, sx, h, 8, PX, border);
-    if (nextH !== h) {
-      pxRect(ctx, sx + 6, Math.min(h, nextH), PX, Math.abs(nextH - h) + PX, border);
-    }
+  // Far craggy mountain range (2px horizontal resolution, two-tone lit ridge, NO white border!)
+  const farScroll = reducedMotion ? 0 : state.cameraX * 0.16;
+  ctx.beginPath();
+  ctx.moveTo(0, floorY);
+  for (let sx = 0; sx <= WORLD_WIDTH; sx += 2) {
+    ctx.lineTo(sx, farCragHeight(sx + farScroll, sectorIdx));
   }
+  ctx.lineTo(WORLD_WIDTH, floorY);
+  ctx.closePath();
+  ctx.fillStyle = stagePal.farMtn;
+  ctx.fill();
 
-  // Mid stepped hills
-  const midScroll = reducedMotion ? 0 : Math.floor((state.cameraX * 0.36) / 8) * 8;
-  for (let sx = 0; sx < WORLD_WIDTH; sx += 8) {
-    const wx = sx + midScroll;
-    const h = midHillHeight(wx, sectorIdx);
-    const nextH = midHillHeight(wx + 8, sectorIdx);
-    pxRect(ctx, sx, h, 8, GROUND_Y - h, nextH > h ? stagePal.midShade : stagePal.midHill);
-    pxRect(ctx, sx, h, 8, PX, border);
-    if (nextH !== h) {
-      pxRect(ctx, sx + 6, Math.min(h, nextH), PX, Math.abs(nextH - h) + PX, border);
-    }
+  // Lit ridge cap along far peaks
+  ctx.strokeStyle = stagePal.farRidge;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let sx = 0; sx <= WORLD_WIDTH; sx += 2) {
+    const y = farCragHeight(sx + farScroll, sectorIdx);
+    if (sx === 0) ctx.moveTo(sx, y + 1);
+    else ctx.lineTo(sx, y + 1);
   }
+  ctx.stroke();
 
-  // Stage-specific buildings & structures!
-  drawStageScenery(ctx, sectorIdx, midScroll, border, stagePal);
+  // Mid hills (extends all the way to floorY = 338 behind foreground valleys!)
+  const midScroll = reducedMotion ? 0 : state.cameraX * 0.36;
+  ctx.beginPath();
+  ctx.moveTo(0, floorY);
+  for (let sx = 0; sx <= WORLD_WIDTH; sx += 2) {
+    ctx.lineTo(sx, midRidgeHeight(sx + midScroll, sectorIdx));
+  }
+  ctx.lineTo(WORLD_WIDTH, floorY);
+  ctx.closePath();
+  ctx.fillStyle = stagePal.midHill;
+  ctx.fill();
+
+  ctx.strokeStyle = stagePal.midRidge;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let sx = 0; sx <= WORLD_WIDTH; sx += 2) {
+    const y = midRidgeHeight(sx + midScroll, sectorIdx);
+    if (sx === 0) ctx.moveTo(sx, y + 1);
+    else ctx.lineTo(sx, y + 1);
+  }
+  ctx.stroke();
+
+  // Stage-specific skyline structures
+  drawStageBuildings(ctx, sectorIdx, midScroll, stagePal, dark);
 }
 
-function drawPixelRoadAndCraters(ctx, state, stagePal, reducedMotion, dark) {
-  const camX = snap(state.cameraX);
-  const border = dark ? COMMON.outlineDark : COMMON.ink;
+// Clean, simple, unmistakable craters: the road surface simply drops into a deep shadowed
+// V/U chasm with zero distracting edge boxes or text!
+function drawRoadAndSimpleCraters(ctx, state, stagePal, reducedMotion) {
+  const camX = state.cameraX;
   const sectorIdx = state.sectorIndex ?? 0;
 
   const craters = state.course.obstacles.filter(
@@ -620,95 +475,158 @@ function drawPixelRoadAndCraters(ctx, state, stagePal, reducedMotion, dark) {
       o.x <= camX + WORLD_WIDTH + 32,
   );
 
-  for (let sx = 0; sx < WORLD_WIDTH; sx += 4) {
+  function roadProfileY(sx) {
     const wx = camX + sx;
-    const crater = craters.find((c) => wx >= c.x && wx < c.x + c.width);
+    const crater = craters.find((c) => wx > c.x && wx < c.x + c.width);
     if (crater) {
-      const rel = (wx - crater.x) / crater.width;
-      const stepDepth = rel < 0.2 || rel > 0.8 ? 14 : rel < 0.38 || rel > 0.62 ? 26 : 36;
-      const pitY = GROUND_Y + stepDepth;
-      pxRect(ctx, sx, GROUND_Y, 4, stepDepth, stagePal.craterPit);
-      pxRect(ctx, sx, pitY, 4, WORLD_HEIGHT - pitY, stagePal.roadDeep);
-      pxRect(ctx, sx, pitY, 4, PX * 2, border);
+      const t = (wx - crater.x) / crater.width; // 0..1 across crater
+      const depth = crater.kind === 'crater-wide' ? 42 : 34;
+      // Clean steep rocky drop into flat/angled crater floor
+      const profile =
+        t < 0.22
+          ? t / 0.22
+          : t > 0.78
+            ? (1 - t) / 0.22
+            : 0.88 + Math.sin(t * Math.PI * 3) * 0.12;
+      return GROUND_Y + depth * profile;
+    }
+    return groundYAt(wx, state.course.obstacles, state.course.gates, sectorIdx);
+  }
+
+  // Dark crater shadow backdrop behind road cutout so craters read instantly as open pits
+  for (const crater of craters) {
+    const lx = crater.x - camX;
+    ctx.fillStyle = stagePal.craterShadow;
+    ctx.fillRect(lx, GROUND_Y, crater.width, 46);
+  }
+
+  // Main lunar soil polygon
+  ctx.beginPath();
+  ctx.moveTo(0, WORLD_HEIGHT);
+  for (let sx = 0; sx <= WORLD_WIDTH; sx += 2) {
+    ctx.lineTo(sx, roadProfileY(sx));
+  }
+  ctx.lineTo(WORLD_WIDTH, WORLD_HEIGHT);
+  ctx.closePath();
+  ctx.fillStyle = stagePal.roadTop;
+  ctx.fill();
+
+  // Deeper sub-soil band
+  ctx.beginPath();
+  ctx.moveTo(0, WORLD_HEIGHT);
+  for (let sx = 0; sx <= WORLD_WIDTH; sx += 4) {
+    ctx.lineTo(sx, roadProfileY(sx) + 18);
+  }
+  ctx.lineTo(WORLD_WIDTH, WORLD_HEIGHT);
+  ctx.closePath();
+  ctx.fillStyle = stagePal.roadMid;
+  ctx.fill();
+
+  // Clean, simple, unmistakable craters: the road surface simply drops into a deep shadowed
+  // chasm with zero distracting edge boxes or text!
+  // Bright surface turf/crust lip ONLY on intact road segments (breaks cleanly at craters!)
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = stagePal.roadLip;
+  ctx.beginPath();
+  let penDown = false;
+  for (let sx = 0; sx <= WORLD_WIDTH; sx += 2) {
+    const wx = camX + sx;
+    const inCrater = craters.some((c) => wx > c.x + 1 && wx < c.x + c.width - 1);
+    if (inCrater) {
+      penDown = false;
     } else {
-      const gy = groundYAt(wx, state.course.obstacles, state.course.gates, sectorIdx);
-      pxRect(ctx, sx, gy, 4, 16, stagePal.roadTop);
-      pxRect(ctx, sx, gy + 16, 4, 18, stagePal.roadMid);
-      pxRect(ctx, sx, gy + 34, 4, WORLD_HEIGHT - (gy + 34), stagePal.roadDeep);
-      pxRect(ctx, sx, gy, 4, PX * 2, border);
+      const y = roadProfileY(sx) + 1.5;
+      if (!penDown) {
+        ctx.moveTo(sx, y);
+        penDown = true;
+      } else {
+        ctx.lineTo(sx, y);
+      }
     }
   }
+  ctx.stroke();
 
-  for (const crater of craters) {
-    const lx = snap(crater.x - camX);
-    const rx = snap(crater.x + crater.width - camX);
-    pxRect(ctx, lx - PX, GROUND_Y, PX * 2, 18, border);
-    pxRect(ctx, rx - PX, GROUND_Y, PX * 2, 18, border);
-
-    const rimColor = crater.fromCve ? COMMON.ruby : COMMON.gold;
-    pxFrame(ctx, lx - 8, GROUND_Y - 10, 8, 10, rimColor, border);
-    pxFrame(ctx, rx, GROUND_Y - 10, 8, 10, rimColor, border);
-
-    drawBitmapText(
-      ctx,
-      crater.fromCve ? 'CVE' : '<<<',
-      (lx + rx) * 0.5 - 16,
-      GROUND_Y + 14,
-      2,
-      COMMON.ruby,
-    );
+  // Subtle dark 1px top crisp edge along road & crater walls
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = '#181626';
+  ctx.beginPath();
+  for (let sx = 0; sx <= WORLD_WIDTH; sx += 2) {
+    const y = roadProfileY(sx);
+    if (sx === 0) ctx.moveTo(sx, y);
+    else ctx.lineTo(sx, y);
   }
+  ctx.stroke();
 
-  const pebbleShift = reducedMotion ? 0 : Math.floor(camX / PX) * PX;
-  for (let px = -(pebbleShift % 48); px < WORLD_WIDTH; px += 48) {
+  // Subtle scrolling soil pebbles for speed sensation
+  const pebbleShift = reducedMotion ? 0 : camX;
+  ctx.fillStyle = 'rgba(24, 22, 38, 0.22)';
+  for (let px = -((pebbleShift % 44 + 44) % 44); px < WORLD_WIDTH; px += 44) {
     const wx = camX + px;
-    const inCrater = craters.some((c) => wx >= c.x - 8 && wx <= c.x + c.width + 8);
-    if (!inCrater) {
+    if (!craters.some((c) => wx >= c.x - 6 && wx <= c.x + c.width + 6)) {
       const gy = groundYAt(wx, state.course.obstacles, state.course.gates, sectorIdx);
-      pxRect(ctx, px, gy + 8, 6, 4, stagePal.pebble);
-      pxRect(ctx, px + 22, gy + 20, 8, 4, stagePal.pebble);
+      ctx.fillRect(Math.round(px), Math.round(gy + 9), 4, 2);
+      ctx.fillRect(Math.round(px + 20), Math.round(gy + 21), 5, 2);
     }
   }
 }
 
-function drawPixelGatesAndObstacles(ctx, state, reducedMotion, dark) {
-  const camX = snap(state.cameraX);
-  const border = dark ? COMMON.outlineDark : COMMON.ink;
+function drawGatesAndObstacles(ctx, state, reducedMotion) {
+  const camX = state.cameraX;
   const sectorIdx = state.sectorIndex ?? 0;
 
+  // Checkpoint beacons & Major Goal Arch
   for (const gate of state.course.gates) {
-    const sx = snap(gate.x - camX);
+    const sx = Math.round(gate.x - camX);
     if (sx < -80 || sx > WORLD_WIDTH + 80) continue;
     const gy = groundYAt(gate.x, state.course.obstacles, state.course.gates, sectorIdx);
 
     if (gate.isMajor) {
-      pxRect(ctx, sx - 6, gy - 84, 6, 84, border);
-      pxRect(ctx, sx + 54, gy - 84, 6, 84, border);
-      pxFrame(ctx, sx - 12, gy - 106, 78, 26, gate.reached ? COMMON.mint : COMMON.pink, border);
-      for (let c = 0; c < 12; c++) {
-        pxRect(ctx, sx - 10 + c * 6, gy - 104, 6, 4, c % 2 === 0 ? COMMON.ink : COMMON.paper);
+      ctx.fillStyle = '#181626';
+      ctx.fillRect(sx - 4, gy - 82, 5, 82);
+      ctx.fillRect(sx + 50, gy - 82, 5, 82);
+
+      ctx.fillStyle = gate.reached ? '#7be095' : '#ff8fab';
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(sx - 10, gy - 104, 72, 24, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      for (let c = 0; c < 11; c++) {
+        ctx.fillStyle = c % 2 === 0 ? '#181626' : '#fffdf4';
+        ctx.fillRect(sx - 8 + c * 6, gy - 102, 6, 4);
       }
-      drawBitmapText(ctx, `GOAL ${gate.letter}`, sx + 4, gy - 94, 2, COMMON.ink);
+      ctx.fillStyle = '#181626';
+      ctx.font = '900 12px ui-monospace, Consolas, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`GOAL ${gate.letter}`, sx + 26, gy - 87);
     } else {
-      pxRect(ctx, sx, gy - 62, 4, 62, border);
-      pxFrame(ctx, sx + 4, gy - 62, 34, 24, gate.reached ? COMMON.mint : COMMON.lavender, border);
-      drawBitmapText(ctx, gate.reached ? `${gate.letter}+` : gate.letter, sx + 13, gy - 55, 2, COMMON.ink);
+      ctx.fillStyle = '#181626';
+      ctx.fillRect(sx - 1, gy - 58, 3, 58);
+
+      ctx.fillStyle = gate.reached ? '#8ce8a0' : '#ded4f1';
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(sx + 2, gy - 58, 30, 21, 3);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#181626';
+      ctx.font = '900 12px ui-monospace, Consolas, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(gate.reached ? `${gate.letter}✓` : gate.letter, sx + 17, gy - 43);
     }
   }
 
-  const rockColors = {
-    k: COMMON.ink,
-    l: COMMON.lavender,
-    i: COMMON.paper,
-    s: COMMON.purple,
-  };
-
-  const blink = !reducedMotion && Math.floor(state.elapsed * 8) % 2 === 0;
+  const blink = !reducedMotion && Math.floor(state.elapsed * 9) % 2 === 0;
 
   for (const obs of state.course.obstacles) {
     if (obs.destroyed || obs.kind.startsWith('crater')) continue;
-    const sx = snap(obs.x - camX);
+    const sx = obs.x - camX;
     if (sx + obs.width < -32 || sx > WORLD_WIDTH + 32) continue;
+    const cx = sx + obs.width * 0.5;
     const gy = groundYAt(
       obs.x + obs.width * 0.5,
       state.course.obstacles,
@@ -717,45 +635,169 @@ function drawPixelGatesAndObstacles(ctx, state, reducedMotion, dark) {
     );
 
     if (obs.kind === 'mine') {
-      // Unmistakable armored 8-bit landmine with 3 red contact prongs & blinking beacon
-      pxFrame(ctx, sx, gy - 10, 20, 10, '#625d73', border);
-      pxRect(ctx, sx + 2, gy - 14, 4, 4, COMMON.ruby);
-      pxRect(ctx, sx + 8, gy - 16, 4, 6, COMMON.ruby);
-      pxRect(ctx, sx + 14, gy - 14, 4, 4, COMMON.ruby);
-      pxRect(ctx, sx + 8, gy - 6, 4, 4, blink ? COMMON.gold : COMMON.ruby);
+      // Slope-aligned, high-contrast proximity mine sitting ON TOP of the ground!
+      const gyL = groundYAt(obs.x, state.course.obstacles, state.course.gates, sectorIdx);
+      const gyR = groundYAt(
+        obs.x + obs.width,
+        state.course.obstacles,
+        state.course.gates,
+        sectorIdx,
+      );
+      const slopeAngle = Math.atan2(gyR - gyL, obs.width);
+
+      ctx.save();
+      ctx.translate(cx, gy);
+      ctx.rotate(slopeAngle);
+
+      // Dark outer halo + armored base plate above ground
+      ctx.fillStyle = '#14111f';
+      ctx.beginPath();
+      ctx.moveTo(-12, 1);
+      ctx.lineTo(-10, -8);
+      ctx.lineTo(10, -8);
+      ctx.lineTo(12, 1);
+      ctx.closePath();
+      ctx.fill();
+
+      // Metallic steel body
+      ctx.fillStyle = '#6c758c';
+      ctx.fillRect(-9, -6, 18, 5);
+      ctx.fillStyle = '#adb6cc';
+      ctx.fillRect(-7, -6, 14, 2);
+
+      // Crimson armed dome
+      ctx.fillStyle = '#e62e5c';
+      ctx.strokeStyle = '#14111f';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(0, -6, 6.5, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Three tall vertical contact spikes + bright beacon tips rising well above horizon!
+      for (const pxOff of [-6, 0, 6]) {
+        const spikeH = pxOff === 0 ? -16 : -13;
+        ctx.fillStyle = '#14111f';
+        ctx.fillRect(pxOff - 1.5, spikeH, 3, -spikeH - 5);
+        ctx.fillStyle = blink ? '#fffdf4' : '#ffd15c';
+        ctx.fillRect(pxOff - 1.5, spikeH - 2, 3, 3);
+      }
+
+      // Center warning core
+      ctx.fillStyle = blink ? '#ffd15c' : '#fffdf4';
+      ctx.fillRect(-2, -10, 4, 3);
+
+      ctx.restore();
       continue;
     }
 
-    if (obs.kind === 'rock-tall') {
-      drawSprite(ctx, ROCK_TALL_MAP, sx, gy - 32, rockColors, PX);
-      if (obs.hp < obs.maxHp) {
-        pxRect(ctx, sx + 14, gy - 28, 4, 8, COMMON.ruby);
-        pxRect(ctx, sx + 10, gy - 20, 4, 8, COMMON.ruby);
-        pxRect(ctx, sx + 14, gy - 12, 4, 8, COMMON.ruby);
-      }
-    } else {
-      drawSprite(ctx, ROCK_SMALL_MAP, sx, gy - 22, rockColors, PX);
+    // Angular, multi-faceted craggy lunar boulders (`rock-small` & `rock-tall`)
+    const w = obs.width;
+    const h = obs.height;
+    const left = sx;
+    const top = gy - h;
+
+    ctx.save();
+    // Main boulder silhouette
+    ctx.beginPath();
+    ctx.moveTo(left + 1, gy + 1);
+    ctx.lineTo(left - 1, top + h * 0.58);
+    ctx.lineTo(left + w * 0.18, top + h * 0.2);
+    ctx.lineTo(left + w * 0.46, top);
+    ctx.lineTo(left + w * 0.82, top + h * 0.16);
+    ctx.lineTo(left + w + 1, top + h * 0.55);
+    ctx.lineTo(left + w - 1, gy + 1);
+    ctx.closePath();
+    ctx.fillStyle = obs.kind === 'rock-tall' ? '#917ec2' : '#b5a6db';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#181626';
+    ctx.stroke();
+
+    // Sunlit upper-left facet
+    ctx.beginPath();
+    ctx.moveTo(left + 2, top + h * 0.56);
+    ctx.lineTo(left + w * 0.2, top + h * 0.22);
+    ctx.lineTo(left + w * 0.46, top + 2);
+    ctx.lineTo(left + w * 0.52, top + h * 0.44);
+    ctx.closePath();
+    ctx.fillStyle = '#e8e0fa';
+    ctx.fill();
+
+    // Deep right shadow facet
+    ctx.beginPath();
+    ctx.moveTo(left + w * 0.52, top + h * 0.44);
+    ctx.lineTo(left + w * 0.8, top + h * 0.18);
+    ctx.lineTo(left + w - 1, top + h * 0.56);
+    ctx.lineTo(left + w - 2, gy);
+    ctx.lineTo(left + w * 0.44, gy);
+    ctx.closePath();
+    ctx.fillStyle = '#5a4a85';
+    ctx.fill();
+
+    // Internal crag line
+    ctx.strokeStyle = '#2d2445';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(left + w * 0.46, top + 2);
+    ctx.lineTo(left + w * 0.52, top + h * 0.46);
+    ctx.lineTo(left + w * 0.34, gy - 2);
+    ctx.stroke();
+
+    // Glowing fracture crack when 2-HP tall boulder has taken 1 hit
+    if (obs.hp < obs.maxHp) {
+      ctx.strokeStyle = '#ff3b6b';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(left + w * 0.48, top + 2);
+      ctx.lineTo(left + w * 0.34, top + h * 0.45);
+      ctx.lineTo(left + w * 0.62, top + h * 0.72);
+      ctx.lineTo(left + w * 0.45, gy - 2);
+      ctx.stroke();
     }
+    ctx.restore();
   }
 
-  // Rolling & bouncing highland stones (Stages 4 & 5)
+  // Tumbling 8-sided highland rolling stones (Stages 4 & 5)
   for (const stone of state.rollingStones ?? []) {
-    const sx = snap(stone.x - camX - 12);
-    const sy = snap(stone.y - 24);
-    const spin = reducedMotion ? 0 : Math.floor(stone.phase) % 2;
-    drawSprite(
-      ctx,
-      spin === 0 ? ROLLING_STONE_A : ROLLING_STONE_B,
-      sx,
-      sy,
-      {
-        k: COMMON.ink,
-        g: stone.hp < stone.maxHp ? COMMON.peach : COMMON.gold,
-        i: COMMON.paper,
-        s: '#b57b2e',
-      },
-      PX,
-    );
+    const sx = stone.x - camX;
+    const sy = stone.y - stone.radius;
+    const r = stone.radius;
+
+    ctx.save();
+    ctx.translate(sx, sy);
+    if (!reducedMotion) {
+      ctx.rotate(-stone.phase);
+    }
+
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const rad = i % 2 === 0 ? r : r * 0.86;
+      const px = Math.cos(a) * rad;
+      const py = Math.sin(a) * rad;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = stone.hp < stone.maxHp ? '#ff9776' : '#e6b85c';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#181626';
+    ctx.stroke();
+
+    // Facet cross lines so spin is unmistakable
+    ctx.strokeStyle = '#8c6223';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.6, -r * 0.2);
+    ctx.lineTo(r * 0.5, r * 0.3);
+    ctx.moveTo(r * 0.2, -r * 0.6);
+    ctx.lineTo(-r * 0.3, r * 0.5);
+    ctx.stroke();
+
+    ctx.restore();
   }
 }
 
@@ -764,216 +806,459 @@ function drawRoverAndMona(ctx, state, reducedMotion) {
     return;
   }
 
-  const bx = snap(state.buggy.screenX);
-  const bodyLift = !state.buggy.grounded ? -2 : 0;
-  const by = snap(state.buggy.y);
-  const animFrame = reducedMotion ? 0 : Math.floor(state.buggy.wheelPhase * 0.6) % 2;
+  const bx = state.buggy.screenX;
+  const by = state.buggy.y;
+  const sectorIdx = state.sectorIndex ?? 0;
 
-  if (state.gearIndex === 2 && state.status === 'playing') {
-    const flameLen = animFrame === 0 ? 14 : 10;
-    pxRect(ctx, bx - 34 - flameLen, by - 20 + bodyLift, flameLen, 8, COMMON.gold);
-    pxRect(ctx, bx - 30 - flameLen / 2, by - 18 + bodyLift, flameLen / 2, 4, COMMON.ruby);
+  // Match terrain slope smoothly when grounded!
+  let tilt = state.buggy.pitch;
+  if (state.buggy.grounded) {
+    const yL = groundYAt(
+      state.buggy.worldX - 18,
+      state.course.obstacles,
+      state.course.gates,
+      sectorIdx,
+    );
+    const yR = groundYAt(
+      state.buggy.worldX + 18,
+      state.course.obstacles,
+      state.course.gates,
+      sectorIdx,
+    );
+    tilt = Math.atan2(yR - yL, 36) * 0.85;
   }
 
-  drawSprite(
-    ctx,
-    animFrame === 0 ? MONA_PILOT_A : MONA_PILOT_B,
-    bx - 22,
-    by - 50 + bodyLift,
-    {
-      k: COMMON.ink,
-      i: COMMON.paper,
-      c: COMMON.peach,
-      q: COMMON.aquaSoft,
-    },
-    PX,
-  );
+  const animFrame = reducedMotion ? 0 : Math.floor(state.buggy.wheelPhase * 0.65) % 2;
 
-  pxFrame(ctx, bx - 30, by - 30 + bodyLift, 10, 10, COMMON.aquaSoft, COMMON.ink);
-  pxRect(ctx, bx - 27, by - 34 + bodyLift, 4, 4, COMMON.leaf);
+  ctx.save();
+  ctx.translate(Math.round(bx), Math.round(by));
+  if (!reducedMotion) {
+    ctx.rotate(tilt);
+  }
 
-  pxFrame(ctx, bx - 34, by - 22 + bodyLift, 68, 12, COMMON.pink, COMMON.ink);
-  pxRect(ctx, bx - 30, by - 20 + bodyLift, 58, 2, COMMON.peach);
-  pxRect(ctx, bx - 18, by - 16 + bodyLift, 36, 4, COMMON.lavender);
+  // 1. Boost thruster flame
+  if (state.gearIndex === 2 && state.status === 'playing') {
+    const fl = animFrame === 0 ? 15 : 10;
+    ctx.fillStyle = '#ffd15c';
+    ctx.strokeStyle = '#181626';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-31, -15);
+    ctx.lineTo(-31 - fl, -19);
+    ctx.lineTo(-28 - fl * 0.6, -13);
+    ctx.lineTo(-31 - fl, -9);
+    ctx.lineTo(-31, -10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
 
-  pxFrame(ctx, bx + 32, by - 20 + bodyLift, 8, 8, COMMON.gold, COMMON.ink);
-  pxRect(ctx, bx + 40, by - 18 + bodyLift, 4, 4, COMMON.ruby);
+  // 2. Fine-pixel canonical Mona seated openly above the buggy fender!
+  drawPixelSprite1x(ctx, animFrame === 0 ? MONA_FINE_A : MONA_FINE_B, -16, -39, {
+    k: '#231f2e',
+    i: '#fffdf4',
+    w: '#ffffff',
+    c: '#ffb3a7',
+    q: '#70d6ff',
+  });
 
-  const wheelMap = animFrame === 0 ? WHEEL_A : WHEEL_B;
-  const wheelColors = { k: COMMON.ink, i: COMMON.paper };
-  for (const [idx, wxOff] of [-22, 0, 22].entries()) {
+  // 3. Rear anti-air plasma turret
+  ctx.fillStyle = '#70d6ff';
+  ctx.strokeStyle = '#181626';
+  ctx.lineWidth = 1.8;
+  ctx.fillRect(-26, -27, 7, 9);
+  ctx.strokeRect(-26, -27, 7, 9);
+  ctx.fillStyle = '#5ce0a8';
+  ctx.fillRect(-24, -31, 3, 4);
+
+  // 4. Sleek retro arcade pink & lavender 6-wheel buggy hull
+  ctx.fillStyle = '#f06aa7';
+  ctx.strokeStyle = '#181626';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-31, -18);
+  ctx.lineTo(18, -18);
+  ctx.lineTo(31, -13);
+  ctx.lineTo(31, -8);
+  ctx.lineTo(-31, -8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Highlight trim & side pod
+  ctx.fillStyle = '#ffb3d1';
+  ctx.fillRect(-28, -17, 44, 2.5);
+  ctx.fillStyle = '#ded4f1';
+  ctx.fillRect(-15, -13.5, 32, 3.5);
+
+  // 5. Front laser blaster
+  ctx.fillStyle = '#ffd15c';
+  ctx.fillRect(30, -15, 6, 5);
+  ctx.strokeRect(30, -15, 6, 5);
+  ctx.fillStyle = '#ff3366';
+  ctx.fillRect(36, -14, 3, 3);
+
+  // 6. Three articulated suspension struts & spoked arcade tires
+  for (const [idx, wxOff] of [-20, 0, 20].entries()) {
     const bounce =
       reducedMotion || !state.buggy.grounded
         ? 0
-        : Math.round(Math.sin(state.buggy.wheelPhase + idx * 1.8)) * PX;
-    const wy = by - 14 + bounce;
-    pxRect(ctx, bx + wxOff - 2, by - 12 + bodyLift, 4, 6, COMMON.ink);
-    drawSprite(ctx, wheelMap, bx + wxOff - 7, wy, wheelColors, PX);
+        : Math.sin(state.buggy.wheelPhase + idx * 1.9) * 1.8;
+    const wy = -6.5 + bounce;
+
+    // Silver suspension strut
+    ctx.strokeStyle = '#cfd6e6';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(wxOff * 0.82, -9);
+    ctx.lineTo(wxOff, wy);
+    ctx.stroke();
+
+    // Rubber tire
+    ctx.fillStyle = '#1e1b29';
+    ctx.strokeStyle = '#0e0c14';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(wxOff, wy, 6.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Rotating 4-spoke rim
+    const spokeAngle = reducedMotion ? 0 : state.buggy.wheelPhase * 0.45 + idx;
+    ctx.strokeStyle = '#fffdf4';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(wxOff + Math.cos(spokeAngle) * 3.6, wy + Math.sin(spokeAngle) * 3.6);
+    ctx.lineTo(wxOff - Math.cos(spokeAngle) * 3.6, wy - Math.sin(spokeAngle) * 3.6);
+    ctx.moveTo(wxOff - Math.sin(spokeAngle) * 3.6, wy + Math.cos(spokeAngle) * 3.6);
+    ctx.lineTo(wxOff + Math.sin(spokeAngle) * 3.6, wy - Math.cos(spokeAngle) * 3.6);
+    ctx.stroke();
   }
+
+  ctx.restore();
 }
 
-function drawAerialAndProjectiles(ctx, state, reducedMotion) {
-  const camX = snap(state.cameraX);
+function drawDistinctUfosAndProjectiles(ctx, state, reducedMotion) {
+  const camX = state.cameraX;
 
+  // Player laser & anti-air plasma bolts
   for (const shot of state.shots) {
-    const sx = snap(shot.x - camX);
-    const sy = snap(shot.y);
+    const sx = shot.x - camX;
+    const sy = shot.y;
     if (shot.kind === 'forward') {
-      pxFrame(ctx, sx - 10, sy - 4, 20, 8, COMMON.ruby, COMMON.ink);
-      pxRect(ctx, sx - 6, sy - 2, 12, 2, COMMON.paper);
+      ctx.fillStyle = '#ff2e63';
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.roundRect(sx - 9, sy - 2.5, 18, 5, 2.5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fffdf4';
+      ctx.fillRect(sx - 5, sy - 1, 10, 2);
     } else {
-      pxFrame(ctx, sx - 4, sy - 10, 8, 18, COMMON.aqua, COMMON.ink);
-      pxRect(ctx, sx - 2, sy - 6, 4, 10, COMMON.paper);
+      ctx.fillStyle = '#56e0ff';
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.roundRect(sx - 2.5, sy - 9, 5, 16, 2.5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fffdf4';
+      ctx.fillRect(sx - 1, sy - 6, 2, 10);
     }
   }
 
-  // Render distinct Bug-Dropper Tri-Pods vs Armored CVE Crater-Bombers!
-  const ufoFrame = reducedMotion ? 0 : Math.floor(state.elapsed * 6) % 2;
+  const pulse = reducedMotion ? 0 : Math.sin(state.elapsed * 10);
+
+  // Two unmistakably distinct UFO designs!
   for (const ufo of state.ufos) {
-    const ux = snap(ufo.screenX - 20);
-    const uy = snap(ufo.y - 10);
+    const ux = ufo.screenX;
+    const uy = ufo.y;
     const isCve = ufo.kind === 'cve-bomber' || ufo.kind === 'bomber';
+
+    ctx.save();
+    ctx.translate(ux, uy);
+
     if (isCve) {
-      drawSprite(
-        ctx,
-        ufoFrame === 0 ? CVE_UFO_A : CVE_UFO_B,
-        ux,
-        uy,
-        {
-          k: COMMON.ink,
-          r: COMMON.ruby,
-          g: COMMON.gold,
-          i: COMMON.paper,
-        },
-        PX,
-      );
+      // TYPE 2: Heavy Crimson-and-Gold Horned CVE Dreadnought Saucer
+      const hovering = (ufo.hoverTimer ?? 0) > 0;
+
+      // Twin armored horns
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-10, -7);
+      ctx.lineTo(-16, -15);
+      ctx.moveTo(10, -7);
+      ctx.lineTo(16, -15);
+      ctx.stroke();
+      ctx.strokeStyle = '#ffd15c';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      // Golden armored command dome
+      ctx.fillStyle = '#ffd15c';
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, -3, 11, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Wide crimson dreadnought hull
+      ctx.fillStyle = '#e02856';
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 22, 6.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Chasing rim lights
+      const chase = reducedMotion ? 0 : Math.floor(state.elapsed * 8) % 4;
+      for (let l = 0; l < 4; l++) {
+        const lx = -12 + l * 8;
+        ctx.fillStyle = l === chase ? '#fffdf4' : '#ffd15c';
+        ctx.beginPath();
+        ctx.arc(lx, 1, 2.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Underneath CVE bomb-bay hatch (flashes bright white-gold during hover telegraph!)
+      ctx.fillStyle = hovering ? '#fffdf4' : '#8f1535';
+      ctx.beginPath();
+      ctx.roundRect(-6, 6, 12, hovering ? 6 : 4, 2);
+      ctx.fill();
+      ctx.stroke();
     } else {
-      drawSprite(
-        ctx,
-        ufoFrame === 0 ? BUG_UFO_A : BUG_UFO_B,
-        ux,
-        uy,
-        {
-          k: COMMON.ink,
-          q: COMMON.aqua,
-          i: COMMON.paper,
-        },
-        PX,
-      );
+      // TYPE 1: Agile Electric-Cyan Tri-Orb Bug-Dropper Cluster (classic tri-sphere silhouette!)
+      // Subtle bank angle matching swoop direction
+      if (!reducedMotion) {
+        ctx.rotate((ufo.dir ?? 1) * 0.08);
+      }
+
+      // Energy triangle struts connecting the 3 orbs
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -8);
+      ctx.lineTo(-11, 5);
+      ctx.lineTo(11, 5);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.strokeStyle = '#96f2ff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Three glowing cyan plasma orbs (`top`, `bottom-left`, `bottom-right`)
+      for (const [ox, oy] of [
+        [0, -8],
+        [-11, 5],
+        [11, 5],
+      ]) {
+        ctx.fillStyle = '#3dc8ff';
+        ctx.strokeStyle = '#181626';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(ox, oy, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Inner pulsing white core
+        ctx.fillStyle = pulse > 0 ? '#fffdf4' : '#bdf4ff';
+        ctx.beginPath();
+        ctx.arc(ox, oy, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
+
+    ctx.restore();
   }
 
-  // Render fluttering Bugs vs heavy crater-carving CVE warheads!
-  const dropFrame = reducedMotion ? 0 : Math.floor(state.elapsed * 10) % 2;
+  // Falling Bugs (winged fluttering bug) vs CVE Warheads (finned red/gold crater bomb)
+  const wingFlap = !reducedMotion && Math.floor(state.elapsed * 14) % 2 === 0;
   for (const bomb of state.bombs) {
-    const sx = snap(bomb.x - camX);
-    const sy = snap(bomb.y);
+    const sx = bomb.x - camX;
+    const sy = bomb.y;
     const isCve = bomb.kind === 'cve' || Boolean(bomb.carvesCrater);
+
+    ctx.save();
+    ctx.translate(sx, sy);
+
     if (isCve) {
-      drawSprite(
-        ctx,
-        CVE_DROP,
-        sx - 8,
-        sy - 8,
-        {
-          k: COMMON.ink,
-          r: dropFrame === 0 ? COMMON.ruby : COMMON.gold,
-          g: COMMON.gold,
-          i: COMMON.paper,
-        },
-        PX,
-      );
-      drawBitmapText(ctx, 'CVE', sx + 10, sy - 4, 1, COMMON.ruby);
+      // Finned CVE crater-blasting warhead
+      ctx.fillStyle = '#ffd15c';
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(-6, -8);
+      ctx.lineTo(6, -8);
+      ctx.lineTo(3, -3);
+      ctx.lineTo(-3, -3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#e02856';
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 5.5, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = wingFlap ? '#fffdf4' : '#ffd15c';
+      ctx.fillRect(-2, -1, 4, 3);
     } else {
-      drawSprite(
-        ctx,
-        dropFrame === 0 ? BUG_DROP_A : BUG_DROP_B,
-        sx - 8,
-        sy - 6,
-        {
-          k: COMMON.ink,
-          p: COMMON.pink,
-          i: COMMON.paper,
-        },
-        PX,
-      );
+      // Fluttering space-bug (explodes on contact, no crater)
+      ctx.fillStyle = '#bdf4ff';
+      ctx.strokeStyle = '#181626';
+      ctx.lineWidth = 1.4;
+      const wy = wingFlap ? -3 : 1;
+      ctx.beginPath();
+      ctx.ellipse(-6, wy, 5, 2.5, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(6, wy, 5, 2.5, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#ff6ea8';
+      ctx.beginPath();
+      ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
     }
+
+    ctx.restore();
   }
 
+  // Retro spark & debris particles
   for (const p of state.particles) {
-    const sx = snap(p.x - camX);
-    const sy = snap(p.y);
-    const size = p.life > p.maxLife * 0.5 ? 8 : 6;
-    const fill =
+    const sx = p.x - camX;
+    const sy = p.y;
+    const alpha = Math.max(0, p.life / p.maxLife);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle =
       p.colorKind === 'ruby'
-        ? COMMON.ruby
+        ? '#ff3b6b'
         : p.colorKind === 'lavender'
-          ? COMMON.lavender
+          ? '#ded4f1'
           : p.colorKind === 'mint'
-            ? COMMON.aqua
-            : COMMON.gold;
-    pxFrame(ctx, sx - size / 2, sy - size / 2, size, size, fill, COMMON.ink);
+            ? '#70d6ff'
+            : '#ffd15c';
+    ctx.strokeStyle = '#181626';
+    ctx.lineWidth = 1.2;
+    ctx.fillRect(sx - 3, sy - 3, 6, 6);
+    ctx.strokeRect(sx - 3, sy - 3, 6, 6);
+    ctx.restore();
   }
 }
 
-function drawPixelHudBezel(ctx, state, stagePal, dark) {
-  const border = dark ? COMMON.outlineDark : COMMON.ink;
-  const hudBg = dark ? COMMON.hudDark : COMMON.hudLight;
-  const textCol = dark ? COMMON.paper : COMMON.ink;
+function drawRetroHudBezel(ctx, state, dark) {
+  const hudBg = dark ? 'rgba(22, 20, 36, 0.92)' : 'rgba(255, 253, 244, 0.92)';
+  const border = dark ? '#8b84a8' : '#2b2835';
+  const textCol = dark ? '#f7f3e8' : '#231f2e';
 
+  // Active UFO warning pill in upper-left
   if (state.ufos.length > 0) {
-    const hasCve = state.ufos.some((u) => u.kind === 'cve-bomber' || u.kind === 'bomber');
-    pxFrame(ctx, 12, 10, 168, 22, hasCve ? COMMON.gold : COMMON.pink, border);
-    drawBitmapText(
-      ctx,
-      hasCve ? `CVE+BUGS ${state.ufos.length}` : `BUG UFO ${state.ufos.length}`,
+    const hasCve = state.ufos.some((u) => u.kind === 'cve-bomber' || ufoIsCve(u));
+    ctx.fillStyle = hasCve ? '#ffd15c' : '#96f2ff';
+    ctx.strokeStyle = '#181626';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(12, 10, 158, 22, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#181626';
+    ctx.font = '800 11px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(
+      hasCve ? `▲ CVE + BUG UFO (${state.ufos.length})` : `▲ BUG SCOUTS (${state.ufos.length})`,
       20,
-      16,
-      2,
-      COMMON.ink,
+      25,
     );
   }
 
+  // Speed gear indicator in upper-right
   const gear = GEARS[state.gearIndex];
-  pxFrame(ctx, WORLD_WIDTH - 134, 10, 122, 22, hudBg, border);
+  ctx.fillStyle = hudBg;
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(WORLD_WIDTH - 128, 10, 116, 22, 6);
+  ctx.fill();
+  ctx.stroke();
+
   for (let g = 0; g < 3; g++) {
-    pxFrame(
-      ctx,
-      WORLD_WIDTH - 126 + g * 12,
-      15,
-      10,
-      12,
-      g <= state.gearIndex ? COMMON.mint : stagePal.skyBand,
-      border,
-    );
+    ctx.fillStyle = g <= state.gearIndex ? '#5ce0a8' : 'rgba(130, 125, 150, 0.28)';
+    ctx.strokeStyle = '#181626';
+    ctx.lineWidth = 1.4;
+    ctx.fillRect(WORLD_WIDTH - 120 + g * 11, 15, 8, 12);
+    ctx.strokeRect(WORLD_WIDTH - 120 + g * 11, 15, 8, 12);
   }
-  drawBitmapText(ctx, gear.label, WORLD_WIDTH - 84, 16, 2, textCol);
+  ctx.fillStyle = textCol;
+  ctx.font = '800 11px ui-monospace, Consolas, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(gear.label, WORLD_WIDTH - 82, 25);
 
+  // Bottom checkpoint progress radar strip
   const barX = 20;
-  const barY = 328;
+  const barY = 330;
   const barW = WORLD_WIDTH - 40;
-  pxFrame(ctx, barX, barY, barW, 24, hudBg, border);
+  ctx.fillStyle = hudBg;
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(barX, barY, barW, 22, 6);
+  ctx.fill();
+  ctx.stroke();
 
-  drawBitmapText(ctx, state.course.sectorName, barX + 10, barY + 7, 2, textCol);
+  ctx.fillStyle = textCol;
+  ctx.font = '800 10.5px ui-monospace, Consolas, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(state.course.sectorName.toUpperCase(), barX + 10, barY + 15);
 
   const letters = sectorCheckpointLetters(state.checkpointIndex);
-  const trackLeft = barX + 86;
-  const trackRight = barX + barW - 22;
+  const trackLeft = barX + 82;
+  const trackRight = barX + barW - 20;
   const trackW = trackRight - trackLeft;
   const ratio = Math.max(0, Math.min(1, state.buggy.worldX / Math.max(1, state.course.length)));
 
-  pxRect(ctx, trackLeft, barY + 11, trackW, 4, border);
-  pxRect(ctx, trackLeft, barY + 11, trackW * ratio, 4, COMMON.leaf);
+  ctx.fillStyle = 'rgba(130, 125, 150, 0.35)';
+  ctx.fillRect(trackLeft, barY + 9.5, trackW, 3);
+  ctx.fillStyle = '#4ea870';
+  ctx.fillRect(trackLeft, barY + 9.5, trackW * ratio, 3);
 
   letters.forEach((letter, idx) => {
-    const lx = snap(trackLeft + (trackW * idx) / Math.max(1, letters.length - 1));
+    const lx = trackLeft + (trackW * idx) / Math.max(1, letters.length - 1);
     const reached = state.course.gates[idx]?.reached;
-    pxFrame(ctx, lx - 8, barY + 4, 16, 16, reached ? COMMON.mint : COMMON.paper, border);
-    drawBitmapText(ctx, letter, lx - 3, barY + 7, 2, COMMON.ink);
+    ctx.fillStyle = reached ? '#7be095' : '#fffdf4';
+    ctx.strokeStyle = '#181626';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(lx, barY + 11, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#181626';
+    ctx.font = '800 9.5px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(letter, lx, barY + 14.5);
   });
 
-  const markerX = snap(trackLeft + trackW * ratio);
-  pxRect(ctx, markerX - 4, barY - 2, 8, 6, COMMON.ruby);
+  const markerX = trackLeft + trackW * ratio;
+  ctx.fillStyle = '#ff2e63';
+  ctx.beginPath();
+  ctx.moveTo(markerX, barY + 3);
+  ctx.lineTo(markerX - 4, barY - 2);
+  ctx.lineTo(markerX + 4, barY - 2);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function ufoIsCve(u) {
+  return u.kind === 'cve-bomber' || u.kind === 'bomber';
 }
 
 export function renderGame(canvas, state, options = {}) {
@@ -984,26 +1269,30 @@ export function renderGame(canvas, state, options = {}) {
   const sectorIdx = Math.max(0, Math.min(STAGE_THEMES.length - 1, state.sectorIndex ?? 0));
   const stagePal = dark ? STAGE_THEMES[sectorIdx].dark : STAGE_THEMES[sectorIdx].light;
 
-  if (canvas.width !== WORLD_WIDTH || canvas.height !== WORLD_HEIGHT) {
-    canvas.width = WORLD_WIDTH;
-    canvas.height = WORLD_HEIGHT;
+  const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
+  const targetW = Math.round(WORLD_WIDTH * dpr);
+  const targetH = Math.round(WORLD_HEIGHT * dpr);
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
   }
-  ctx.imageSmoothingEnabled = false;
 
   ctx.save();
+  ctx.scale(dpr, dpr);
+
   if (state.status === 'crashing' && !reducedMotion) {
-    const shake = Math.round(Math.sin(state.crashTimer * 50) * 2) * PX;
-    ctx.translate(shake, 0);
+    const mag = state.crashTimer * 5;
+    ctx.translate(Math.sin(state.crashTimer * 55) * mag, Math.cos(state.crashTimer * 42) * mag);
   }
 
   drawSkyAndParallax(ctx, state, stagePal, reducedMotion, dark);
-  drawPixelRoadAndCraters(ctx, state, stagePal, reducedMotion, dark);
-  drawPixelGatesAndObstacles(ctx, state, reducedMotion, dark);
+  drawRoadAndSimpleCraters(ctx, state, stagePal, reducedMotion);
+  drawGatesAndObstacles(ctx, state, reducedMotion);
   if (state.status !== 'crashing' || state.crashTimer > 0.35) {
     drawRoverAndMona(ctx, state, reducedMotion);
   }
-  drawAerialAndProjectiles(ctx, state, reducedMotion);
-  drawPixelHudBezel(ctx, state, stagePal, dark);
+  drawDistinctUfosAndProjectiles(ctx, state, reducedMotion);
+  drawRetroHudBezel(ctx, state, dark);
 
   ctx.restore();
 }

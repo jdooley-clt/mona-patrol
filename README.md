@@ -41,12 +41,14 @@ west/east/trigger to fire, Start to begin or pause).
   triumphant 8-bit fanfare, shows full section stats, and awards `1,000+` clear points, `80`
   points per second under the 52-second par time, UFO bonuses, and `+1,000` for a flawless run.
 - **Hazards & enemies**:
-  - **Merge-conflict craters (`<<<`)** and **armored landmines** cannot be shot and must be
-    jumped (`+100` to `+150` pts), with Stage 3+ combos rewarding speed and jump timing.
+  - **Craters & armored landmines** cannot be shot and must be jumped (`+100` to `+150` pts),
+    with Stage 3+ mine combinations rewarding speed and jump timing.
   - **Lunar boulders & rolling stones** can be jumped or blasted (`1` hit for small rocks, `2`
     hits for tall stacks and bouncing highland stones; `+100` to `+250` pts).
-  - **Two UFO types**: aqua **Bug Droppers** drop fluttering bugs that explode on contact, while
-    crimson-gold **CVE Bombers** drop heavy CVE warheads that carve fresh craters into the road!
+  - **Two distinct UFO types**: cyan tri-orb **Bug Droppers** swoop in waves and drop exploding
+    bugs, while crimson-gold **CVE Bombers** stalk, hover-telegraph, and drop CVE warheads that
+    blast fresh craters into the road. Most enter from the left, with an increasing share entering
+    from the right, patrolling back and forth overhead until destroyed.
 - **Accessibility & motion**: audio starts muted, focus loss pauses play automatically, an ARIA
   live region announces checkpoints and scores, and `prefers-reduced-motion` disables parallax
   drift and crash shake.
