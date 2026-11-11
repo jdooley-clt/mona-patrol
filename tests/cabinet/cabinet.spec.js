@@ -366,8 +366,15 @@ for (const width of [320, 390]) {
       .poll(async () => Number(await stageData(frame, 'shots-fired')))
       .toBeGreaterThanOrEqual(1);
 
+    // Clear remaining road hazards before pause & viewport geometry assertions so runner
+    // timing jitter never enters `crashing` mid-tap.
+    await frame.evaluate(() => {
+      const st = window.__monaPatrol.getState();
+      st.course.obstacles = [];
+      st.bombs = [];
+    });
     await expect.poll(() => stageData(frame, 'status')).toBe('playing');
-    await page.locator('#frame-host').scrollIntoViewIfNeeded();
+    await frame.locator('#pause').scrollIntoViewIfNeeded();
     await frame.locator('#pause').tap();
     await expect.poll(() => stageData(frame, 'status')).toBe('paused');
 
