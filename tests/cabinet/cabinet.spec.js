@@ -141,6 +141,12 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   await expect.poll(() => stageData(page, 'status')).toBe('playing');
   await expect(page.locator('#stage')).toBeFocused();
   await expect(page.locator('#announcer')).toContainText('Patrol started');
+  // Keep road clear during multi-second axe-core DOM scans so runner speed never alters state
+  await page.evaluate(() => {
+    const st = window.__monaPatrol.getState();
+    st.course.obstacles = [];
+    st.course.waves = [];
+  });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   // Focus standalone Arcade link — game keys must not hijack link focus

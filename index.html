@@ -66,8 +66,17 @@
           </div>
           <div class="hud-actions">
             <button id="pause" class="action-chip" type="button" aria-pressed="false" disabled title="Pause or resume (P)">Pause</button>
-            <button id="restart" class="action-chip" type="button" title="Restart patrol from Point A (R)">Restart</button>
+            <button id="restart" class="action-chip" type="button" title="Restart patrol (R)">Restart</button>
           </div>
+        </div>
+
+        <div class="stage-bar" id="stage-picker" role="group" aria-label="Select patrol stage">
+          <span class="label stage-bar-label">STAGE</span>
+          <button class="stage-pill" type="button" data-sector-pick="0" aria-pressed="true">1·A–E</button>
+          <button class="stage-pill" type="button" data-sector-pick="1" aria-pressed="false">2·F–J</button>
+          <button class="stage-pill" type="button" data-sector-pick="2" aria-pressed="false">3·K–O</button>
+          <button class="stage-pill" type="button" data-sector-pick="3" aria-pressed="false">4·P–T</button>
+          <button class="stage-pill" type="button" data-sector-pick="4" aria-pressed="false">5·U–Z</button>
         </div>
 
         <div class="stage" id="stage" role="region" tabindex="0"
@@ -91,13 +100,6 @@
               <div><dt>Shot accuracy</dt><dd id="stat-accuracy">100%</dd></div>
               <div><dt>Stage bonus</dt><dd id="stat-bonus">+1000</dd></div>
             </dl>
-            <div class="stage-picker" id="stage-picker" role="group" aria-label="Starting stage">
-              <button class="stage-pill" type="button" data-sector-pick="0" aria-pressed="true">1·A–E</button>
-              <button class="stage-pill" type="button" data-sector-pick="1" aria-pressed="false">2·F–J</button>
-              <button class="stage-pill" type="button" data-sector-pick="2" aria-pressed="false">3·K–O</button>
-              <button class="stage-pill" type="button" data-sector-pick="3" aria-pressed="false">4·P–T</button>
-              <button class="stage-pill" type="button" data-sector-pick="4" aria-pressed="false">5·U–Z</button>
-            </div>
             <div class="overlay-actions">
               <button id="primary" class="primary" type="button">Start patrol <span aria-hidden="true">→</span></button>
               <button id="replay-sector" class="secondary-btn" type="button" hidden>Replay A–E</button>

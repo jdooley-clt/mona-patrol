@@ -132,7 +132,7 @@ function announce(message) {
 }
 
 function syncStagePills() {
-  const active = state.selectedSector ?? state.sectorIndex ?? 0;
+  const active = state.status === 'ready' ? (state.selectedSector ?? 0) : (state.sectorIndex ?? 0);
   for (const btn of stagePillBtns) {
     btn.setAttribute('aria-pressed', String(Number(btn.dataset.sectorPick) === active));
   }
@@ -143,7 +143,6 @@ function syncOverlay() {
   if (state.status === 'ready') {
     overlayEl.hidden = false;
     statsGrid.hidden = true;
-    stagePickerEl.hidden = false;
     replaySectorBtn.hidden = true;
     overlayAudioBtn.hidden = false;
     overlayKicker.textContent = `CHECKPOINT ${state.checkpointLetter} — ${(state.course.themeTitle || state.course.sectorName).toUpperCase()}`;
@@ -154,7 +153,6 @@ function syncOverlay() {
   } else if (state.status === 'paused') {
     overlayEl.hidden = false;
     statsGrid.hidden = true;
-    stagePickerEl.hidden = true;
     replaySectorBtn.hidden = true;
     overlayAudioBtn.hidden = false;
     overlayKicker.textContent = `PAUSED AT POINT ${state.checkpointLetter}`;
@@ -166,7 +164,6 @@ function syncOverlay() {
     const s = state.lastSectorBonus;
     overlayEl.hidden = false;
     statsGrid.hidden = false;
-    stagePickerEl.hidden = true;
     replaySectorBtn.hidden = false;
     overlayAudioBtn.hidden = true;
     replaySectorBtn.textContent = `Replay ${s.sectorRange}`;
@@ -186,7 +183,6 @@ function syncOverlay() {
   } else if (state.status === 'gameover') {
     overlayEl.hidden = false;
     statsGrid.hidden = true;
-    stagePickerEl.hidden = false;
     replaySectorBtn.hidden = true;
     overlayAudioBtn.hidden = false;
     overlayKicker.textContent = `REACHED CHECKPOINT ${state.checkpointLetter}`;
@@ -322,10 +318,19 @@ overlayAudioBtn.addEventListener('click', toggleSound);
 for (const btn of stagePillBtns) {
   btn.addEventListener('click', () => {
     const idx = Number(btn.dataset.sectorPick);
-    selectStartSector(state, idx);
-    syncDom();
-    renderGame(canvas, state, { theme: currentTheme(), reducedMotion });
-    primaryBtn.focus({ preventScroll: true });
+    if (state.status === 'ready') {
+      selectStartSector(state, idx);
+      syncDom();
+      renderGame(canvas, state, { theme: currentTheme(), reducedMotion });
+      primaryBtn.focus({ preventScroll: true });
+    } else {
+      jumpsFired = 0;
+      shotsFired = 0;
+      startGame(state, { sectorIndex: idx });
+      drainEvents();
+      syncDom();
+      stageEl.focus({ preventScroll: true });
+    }
   });
 }
 
