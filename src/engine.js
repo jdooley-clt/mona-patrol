@@ -470,6 +470,7 @@ export function createGameState(options = {}) {
       y: startGround,
       vy: 0,
       grounded: true,
+      fallingInCrater: null,
       jumpBuffer: 0,
       coyoteTimer: 0,
       wheelPhase: 0,
@@ -567,6 +568,7 @@ export function requestJump(state) {
   if (state.buggy.grounded || state.buggy.coyoteTimer > 0) {
     state.buggy.vy = JUMP_VELOCITY;
     state.buggy.grounded = false;
+    state.buggy.fallingInCrater = null;
     state.buggy.coyoteTimer = 0;
     state.buggy.jumpBuffer = 0;
     state.events.push({ type: 'jump' });
@@ -653,6 +655,7 @@ function respawnAtCheckpoint(state) {
   state.buggy.y = gY;
   state.buggy.vy = 0;
   state.buggy.grounded = true;
+  state.buggy.fallingInCrater = null;
   state.buggy.pitch = 0;
   state.cameraX = spawnX - state.buggy.screenX;
   state.shots = [];
@@ -700,6 +703,7 @@ export function advanceToNextSector(state) {
   state.buggy.y = gY;
   state.buggy.vy = 0;
   state.buggy.grounded = true;
+  state.buggy.fallingInCrater = null;
   state.buggy.pitch = 0;
   state.cameraX = -state.buggy.screenX;
   state.shots = [];
@@ -735,6 +739,7 @@ export function replayCurrentSector(state) {
   state.buggy.y = gY;
   state.buggy.vy = 0;
   state.buggy.grounded = true;
+  state.buggy.fallingInCrater = null;
   state.buggy.pitch = 0;
   state.cameraX = -state.buggy.screenX;
   state.shots = [];
@@ -957,22 +962,24 @@ export function stepGame(state, dtRaw) {
   const overCrater = state.course.obstacles.find(
     (o) =>
       o.kind.startsWith('crater') &&
-      state.buggy.worldX >= o.x + 11 &&
-      state.buggy.worldX <= o.x + o.width - 11,
+      state.buggy.worldX >= o.x + 6 &&
+      state.buggy.worldX <= o.x + o.width - 6,
   );
 
   if (state.buggy.grounded) {
     if (overCrater) {
       state.buggy.grounded = false;
-      state.buggy.coyoteTimer = 0.12;
+      state.buggy.fallingInCrater = overCrater.id;
+      state.buggy.coyoteTimer = 0.05;
       if (state.buggy.jumpBuffer > 0) {
         requestJump(state);
       } else {
-        state.buggy.vy = 20;
+        state.buggy.vy = 110;
       }
     } else {
       state.buggy.y = surfaceY;
       state.buggy.vy = 0;
+      state.buggy.fallingInCrater = null;
       state.buggy.pitch = 0;
       if (state.buggy.jumpBuffer > 0) {
         requestJump(state);
@@ -983,12 +990,21 @@ export function stepGame(state, dtRaw) {
     state.buggy.y += state.buggy.vy * dt;
     state.buggy.pitch = Math.max(-0.2, Math.min(0.2, state.buggy.vy * 0.0005));
 
-    if (overCrater && state.buggy.y > surfaceY + 8 && state.buggy.coyoteTimer <= 0) {
+    // Driving into ANY crater without jumping crashes once the 50ms lip grace expires
+    if (state.buggy.fallingInCrater && state.buggy.coyoteTimer <= 0) {
+      state.buggy.fallingInCrater = null;
       triggerCrash(state, 'merge-conflict crater');
       return state;
     }
 
-    if (!overCrater && state.buggy.y >= surfaceY) {
+    // Jumping and landing inside a crater crashes on contact
+    if (overCrater && state.buggy.vy > 0 && state.buggy.y >= surfaceY + 2 && state.buggy.coyoteTimer <= 0) {
+      state.buggy.fallingInCrater = null;
+      triggerCrash(state, 'merge-conflict crater');
+      return state;
+    }
+
+    if (!overCrater && !state.buggy.fallingInCrater && state.buggy.y >= surfaceY) {
       state.buggy.y = surfaceY;
       state.buggy.vy = 0;
       state.buggy.grounded = true;

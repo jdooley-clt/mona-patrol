@@ -117,6 +117,44 @@ test('craters and boulders cause crashes on impact, while jumping craters awards
   assert.equal(state.status, 'playing');
   assert.equal(state.course.obstacles[0].scored, true);
   assert.ok(state.score >= scoreBefore + 100);
+
+  // Driving without jumping over the smallest 38px crater MUST crash at Slow, Cruise, AND Boost!
+  for (const [gearIdx, holdAccel] of [
+    [0, false],
+    [1, false],
+    [2, true],
+  ]) {
+    const s = createGameState({ seed: 9 });
+    startGame(s, { seed: 9 });
+    s.invulnTimer = 0;
+    s.gearIndex = gearIdx;
+    s.speed = GEARS[gearIdx].speed + (holdAccel ? 18 : 0);
+    s.input.accelerate = holdAccel;
+    s.course.waves = [];
+    s.course.obstacles = [
+      {
+        id: 'tiny-crater',
+        kind: 'crater-small',
+        x: 180,
+        width: 38,
+        height: 26,
+        hp: Infinity,
+        maxHp: Infinity,
+        shootPoints: 0,
+        jumpPoints: 100,
+        destroyed: false,
+        scored: false,
+      },
+    ];
+    for (let i = 0; i < 130 && s.status === 'playing'; i++) {
+      stepGame(s, 0.016);
+    }
+    assert.equal(
+      s.status,
+      'crashing',
+      `Driving over 38px small crater without jumping must crash at gear ${gearIdx}`,
+    );
+  }
 });
 
 test('forward laser destroys 1-HP and 2-HP boulders; upward turret destroys UFOs and bombs', () => {
