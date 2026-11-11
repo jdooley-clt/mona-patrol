@@ -367,7 +367,7 @@ for (const width of [320, 390]) {
       .toBeGreaterThanOrEqual(1);
 
     await expect.poll(() => stageData(frame, 'status')).toBe('playing');
-    await frame.locator('#pause').scrollIntoViewIfNeeded();
+    await page.locator('#frame-host').scrollIntoViewIfNeeded();
     await frame.locator('#pause').tap();
     await expect.poll(() => stageData(frame, 'status')).toBe('paused');
 

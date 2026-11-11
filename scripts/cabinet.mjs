@@ -31,7 +31,7 @@ export const fixtureEntry = {
   ],
   instructions:
     'Leap lunar craters and Stage 3+ landmine combinations, blast craggy boulders and Stage 4+ rolling stones, and shoot down swooping Bug Droppers and crater-carving CVE Bombers overhead across checkpoints A to Z. Audio starts off; use the game’s own sound, stage, theme, and touch controls.',
-  viewport: { layout: 'document', height: 1020, mobileHeight: 960 },
+  viewport: { layout: 'document', height: 980, mobileHeight: 900 },
 };
 
 export function verifyCabinet() {
