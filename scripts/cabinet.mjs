@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-// Pinned Commit Cabinet commit (`bc22bcd` on jdooley-clt/arcade main).
-export const cabinetSha = 'bc22bcdf76c378c50abe8b235d105e9d7931e9ba';
+// Pinned Commit Cabinet commit (`83f4bcd` on jdooley-clt/arcade main).
+export const cabinetSha = '83f4bcdf6524aa445a7d0fce60e45aea7ffb8b55';
 export const cabinetRoot = resolve('.playwright-cabinet');
 export const siteRoot = resolve('_site');
 export const cabinetDraftRoot = resolve('cabinet');
