@@ -366,6 +366,11 @@ for (const width of [320, 390]) {
       .poll(async () => Number(await stageData(frame, 'shots-fired')))
       .toBeGreaterThanOrEqual(1);
 
+    await expect.poll(() => stageData(frame, 'status')).toBe('playing');
+    await frame.locator('#pause').scrollIntoViewIfNeeded();
+    await frame.locator('#pause').tap();
+    await expect.poll(() => stageData(frame, 'status')).toBe('paused');
+
     for (const id of [
       'theme',
       'audio-toggle',
@@ -387,9 +392,6 @@ for (const width of [320, 390]) {
       expect(rect.left).toBeGreaterThanOrEqual(0);
       expect(rect.right).toBeLessThanOrEqual(width + 1);
     }
-
-    await frame.locator('#pause').tap();
-    await expect.poll(() => stageData(frame, 'status')).toBe('paused');
   });
 }
 
