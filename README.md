@@ -89,7 +89,8 @@ into `.playwright-cabinet`, and `scripts/serve-cabinet.mjs` mounts the cabinet a
 and `_site/` at `/mona-patrol/` on one origin to verify launch, keyboard/touch input, iframe
 focus, standalone backlink hiding, reduced motion, and teardown.
 
-Draft catalog metadata and artwork live in `cabinet/` for review before public registration.
+Cabinet registration assets (`mona-patrol.png`, `mona-patrol-cover.svg`,
+`mona-patrol-character.svg`, and `cabinet/games.json`) are staged in `cabinet/` and `assets/`.
 
 ## Origins
 

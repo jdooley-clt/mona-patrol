@@ -129,4 +129,26 @@ test('draft cabinet/games.json entry validates against pinned arcade src/catalog
   } catch (err) {
     if (err.code !== 'ERR_MODULE_NOT_FOUND') throw err;
   }
+
+  // Verify all shipping cabinet artwork files exist in both cabinet/ and assets/, are byte-identical,
+  // meet exact dimensions (640x360 gameplay PNG), and use self-contained SVGs with no external refs.
+  for (const name of ['mona-patrol.png', 'mona-patrol-cover.svg', 'mona-patrol-character.svg']) {
+    const cabBuf = await readFile(join(root, 'cabinet', name));
+    const assetBuf = await readFile(join(root, 'assets', name));
+    assert.ok(cabBuf.length > 0, `cabinet/${name} is non-empty`);
+    assert.equal(Buffer.compare(cabBuf, assetBuf), 0, `cabinet/${name} matches assets/${name}`);
+  }
+
+  const pngBuf = await readFile(join(root, 'cabinet', 'mona-patrol.png'));
+  assert.equal(pngBuf.readUInt32BE(16), 640, 'mona-patrol.png width is 640px');
+  assert.equal(pngBuf.readUInt32BE(20), 360, 'mona-patrol.png height is 360px');
+
+  for (const svgName of ['mona-patrol-cover.svg', 'mona-patrol-character.svg']) {
+    const svgText = await readFile(join(root, 'cabinet', svgName), 'utf8');
+    assert.match(svgText, /<svg\b[^>]*viewBox=/, `${svgName} declares viewBox`);
+    assert.match(svgText, /<title>[^<]+<\/title>/, `${svgName} includes accessible <title>`);
+    assert.ok(!/<script\b/i.test(svgText), `${svgName} contains no scripts`);
+    assert.ok(!/<image\b/i.test(svgText), `${svgName} embeds no external raster images`);
+    assert.ok(!/https?:\/\/(?!www\.w3\.org\/2000\/svg)/i.test(svgText), `${svgName} has no external URLs`);
+  }
 });

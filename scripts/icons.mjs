@@ -8,36 +8,38 @@ import { fileURLToPath } from 'node:url';
 export const COLORS = {
   k: '#34313e', // graphite pixel outline
   i: '#fffdf4', // creamy ivory face & wheel hubs
-  s: '#fff7df', // warm arcade cream sky
-  l: '#ded4f1', // candy lavender trim
-  p: '#ed9eb7', // candy pink 8-bit rover fender
-  c: '#ffb7a5', // coral-peach road & blush
-  q: '#96dce2', // aqua dome / steering
-  m: '#c5e7b1', // mint beacon
-  r: '#b11f4b', // ruby laser
+  l: '#e8dff7', // candy lavender background
+  d: '#ded4f1', // lavender rover side panel
+  p: '#f06aa7', // arcade pink 6-wheel rover hull
+  c: '#ffb7a5', // peach blush
+  t: '#f4a27e', // lunar terracotta road
+  g: '#ffd15c', // gold laser nozzle
+  q: '#70d6ff', // cyan turret & steering
+  m: '#7bc96f', // lunar crust lip
+  r: '#e02856', // crimson laser
 };
 
-const BACKGROUND = 's';
+const BACKGROUND = 'l';
 
-// 16x16 8-bit pixel Mona (tall Octocat ears, wide ivory face, vertical eyes, curling tentacle)
-// seated openly in the candy-pink 6-wheel lunar rover.
+// 16x16 pixel Mona (tall Octocat ears, wide ivory face, vertical eyes, curling tentacle)
+// seated openly in the pink 6-wheel lunar patrol rover.
 export const MAP = [
-  '.ssssssssssssss.',
-  'ssskksssssskksss',
-  'ssskkkkkkkkkksss',
-  'sskkiiiiiiiikkss',
-  'sskikkiissiikkss',
-  'sskikkiissiikkss',
-  'sskiciiikkiiciks',
-  'sk.kkkkkkkkkkqqs',
-  'kk..kkkkkkkkqqqs',
-  'skppppppppppppcr',
-  'skppllllllllppks',
-  'skkkkkkkkkkkkkks',
-  'sskksskkkksskkss',
-  'sskksskkkksskkss',
-  'cccccccccccccccc',
-  '.cccccccccccccc.',
+  '.llllllllllllll.',
+  'lllkkllllllkklll',
+  'lllkkkkkkkkkklll',
+  'llkkiiiiiiiikkll',
+  'llkiikkiikkiikll',
+  'llkiikkiikkiikll',
+  'llkiciiikkiicikl',
+  'lk.kkkkkkkkkkqql',
+  'kkqkkkkkkkkkqqql',
+  'lkppppppppppppgr',
+  'lkpddddddddddpkl',
+  'lkkkkkkkkkkkkkkl',
+  'llkkllkkkkllkkll',
+  'llkkllkkkkllkkll',
+  'mmmmmmmmmmmmmmmm',
+  '.tttttttttttttt.',
 ];
 
 export const PNG_ICONS = [
@@ -129,37 +131,50 @@ export function png({ cell, pad, opaque }) {
   });
 }
 
-// 1200x630 social preview card built from the same palette and 16x16 buggy sprite.
+// 1200x630 social preview card built from the finished palette, rover sprite,
+// Cyan Tri-Orb Bug-Dropper, and Horned CVE-Bomber.
 export function ogImage() {
   const width = 1200;
   const height = 630;
-  const sky = rgba('#f7f4e9');
-  const dot = rgba('#e6e0cf');
-  const hillFar = rgba('#ded4f1');
-  const hillMid = rgba('#c5e7d8');
-  const ground = rgba('#e8e0f5');
-  const groundDeep = rgba('#d5c8ec');
+  const sky = rgba('#e8dff7');
+  const dot = rgba('#cbbce6');
+  const hillFar = rgba('#cbbce6');
+  const hillMid = rgba('#9fd49c');
+  const roadLip = rgba('#7bc96f');
+  const ground = rgba('#f4a27e');
+  const groundDeep = rgba('#dc8562');
   const ink = rgba('#34313e');
-  const coral = rgba('#ffb7a5');
-  const ruby = rgba('#b11f4b');
+  const cyan = rgba('#3dc8ff');
+  const gold = rgba('#ffd15c');
+  const ruby = rgba('#e02856');
   const ivory = rgba('#fffdf4');
 
-  // Bug UFO 12x7 pixel stamp
-  const ufo = [
-    '....kkkk....',
-    '..kkmmmmkk..',
-    '.kcccccccck.',
-    'kcckikikicck',
+  // Cyan Tri-Orb Bug-Dropper (11x8)
+  const triUfo = [
+    '...kkkkk...',
+    '..kqqiiqk..',
+    '...kkkkk...',
+    'kkkkk.kkkkk',
+    'kqiqkkkqiiq',
+    'kqqqkkkqqqq',
+    'kkkkk.kkkkk',
+    '...........',
+  ];
+
+  // Crimson & Gold Horned CVE-Bomber (12x7)
+  const cveUfo = [
+    'k..kkkkkk..k',
+    '.kkggggggkk.',
     'kkkkkkkkkkkk',
-    '.k.k....k.k.',
-    'k...k..k...k',
+    'krrrrrrrrrrk',
+    'kriggrriigrk',
+    'kkkkkkkkkkkk',
+    '....kggk....',
   ];
 
   return encodePng(width, height, (x, y) => {
-    // Border frame
     if (x < 16 || x >= width - 16 || y < 16 || y >= height - 16) return ink;
 
-    // Ground & merge-conflict crater around x=760..870
     const inCrater = x >= 760 && x <= 870;
     const roadY = 470;
     if (y >= roadY) {
@@ -170,8 +185,9 @@ export function ogImage() {
           return sky;
         }
       }
-      if (y < roadY + 6 && !inCrater) return ink;
-      if (((x + y) % 36) < 3 && y > roadY + 24) return groundDeep;
+      if (y < roadY + 5 && !inCrater) return ink;
+      if (y < roadY + 12 && !inCrater) return roadLip;
+      if (y > roadY + 46) return groundDeep;
       return ground;
     }
 
@@ -180,7 +196,7 @@ export function ogImage() {
     const by = Math.floor((y - 238) / 14);
     if (bx >= 0 && bx < 16 && by >= 0 && by < 14) {
       const ch = MAP[by][bx];
-      if (ch !== '.' && ch !== 's' && ch !== 'c') return rgba(COLORS[ch]);
+      if (ch !== '.' && ch !== 'l' && ch !== 'm' && ch !== 't') return rgba(COLORS[ch]);
     }
 
     // Forward laser beam
@@ -188,20 +204,32 @@ export function ogImage() {
       return ruby;
     }
 
-    // Upward plasma bolt
-    if (x >= 468 && x < 480 && y >= 150 && y <= 230 && ((y >> 4) & 1) === 0) {
-      return rgba('#62bc84');
+    // Upward cyan plasma bolt
+    if (x >= 342 && x < 354 && y >= 150 && y <= 250 && ((y >> 4) & 1) === 0) {
+      return cyan;
     }
 
-    // Two Bug UFOs overhead (scale 8)
-    for (const [ux, uy] of [[440, 82], [790, 118]]) {
-      const sx = Math.floor((x - ux) / 8);
-      const sy = Math.floor((y - uy) / 8);
-      if (sx >= 0 && sx < 12 && sy >= 0 && sy < 7) {
-        const uch = ufo[sy][sx];
+    // Left Cyan Tri-Orb UFO (scale 9)
+    {
+      const sx = Math.floor((x - 190) / 9);
+      const sy = Math.floor((y - 96) / 9);
+      if (sx >= 0 && sx < 11 && sy >= 0 && sy < 8) {
+        const uch = triUfo[sy][sx];
         if (uch === 'k') return ink;
-        if (uch === 'c') return coral;
-        if (uch === 'm') return hillMid;
+        if (uch === 'q') return cyan;
+        if (uch === 'i') return ivory;
+      }
+    }
+
+    // Right Crimson-Gold CVE Bomber UFO (scale 9)
+    {
+      const sx = Math.floor((x - 790) / 9);
+      const sy = Math.floor((y - 108) / 9);
+      if (sx >= 0 && sx < 12 && sy >= 0 && sy < 7) {
+        const uch = cveUfo[sy][sx];
+        if (uch === 'k') return ink;
+        if (uch === 'r') return ruby;
+        if (uch === 'g') return gold;
         if (uch === 'i') return ivory;
       }
     }
