@@ -100,6 +100,18 @@ test('serves pinned cabinet intact and renders both Mona Patrol cover layers', a
     imgs.every((img) => img.complete && img.naturalWidth > 0),
   );
   expect(headerLoaded).toBe(true);
+
+  for (const selector of ['#instruction-content .game-repo', '#player-guide .game-repo']) {
+    const repoLink = page.locator(selector);
+    await expect(repoLink).toHaveCount(1);
+    await expect(repoLink).toHaveText('Source & credits ↗');
+    await expect(repoLink).toHaveAttribute('href', 'https://github.com/jdooley-clt/mona-patrol');
+    await expect(repoLink).toHaveAttribute('target', '_blank');
+    await expect(repoLink).toHaveAttribute('rel', 'noopener noreferrer');
+  }
+  await expect(page.locator('#instruction-content .game-repo')).toBeVisible();
+  await page.locator('#guide-toggle').click();
+  await expect(page.locator('#player-guide .game-repo')).toBeVisible();
 });
 
 test('standalone page links have >=44px touch targets, preserve keyboard nav, and pass axe-core across states', async ({
@@ -175,9 +187,10 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   await expect(page.locator('#help-dialog')).toBeHidden();
   await expect.poll(() => stageData(page, 'status')).toBe('playing');
 
-  // Trigger blur -> auto-pauses
+  // Trigger blur -> auto-pauses + axe scan on paused overlay & Resume controls
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect.poll(() => stageData(page, 'status')).toBe('paused');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   // Resume, verify Stage A–E Clear stats screen + Replay A–E + axe scan
   await page.keyboard.press('Enter');

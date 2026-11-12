@@ -83,8 +83,8 @@ npm run test:cabinet
 
 ## Cabinet compatibility
 
-`scripts/cabinet.mjs` pins `jdooley-clt/arcade` at commit `bc22bcd`
-(`bc22bcdf76c378c50abe8b235d105e9d7931e9ba`). `npm run cabinet:setup` fetches that exact commit
+`scripts/cabinet.mjs` pins `jdooley-clt/arcade` at commit `83f4bcd`
+(`83f4bcdf6524aa445a7d0fce60e45aea7ffb8b55`). `npm run cabinet:setup` fetches that exact commit
 into `.playwright-cabinet`, and `scripts/serve-cabinet.mjs` mounts the cabinet at `/arcade/`
 and `_site/` at `/mona-patrol/` on one origin to verify launch, keyboard/touch input, iframe
 focus, standalone backlink hiding, reduced motion, and teardown.
