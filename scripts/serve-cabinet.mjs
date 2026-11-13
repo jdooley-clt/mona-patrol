@@ -29,12 +29,13 @@ const types = {
   '.webmanifest': 'application/manifest+json',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.webp': 'image/webp',
   '.ttf': 'font/ttf',
   '.txt': 'text/plain; charset=utf-8',
 };
 
 const DRAFT_ART_FILES = new Set([
-  'mona-patrol.png',
+  'mona-patrol.webp',
   'mona-patrol-cover.svg',
   'mona-patrol-character.svg',
 ]);

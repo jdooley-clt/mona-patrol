@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-// Pinned Commit Cabinet commit (`83f4bcd` on jdooley-clt/arcade main).
-export const cabinetSha = '83f4bcdf6524aa445a7d0fce60e45aea7ffb8b55';
+// Pinned Commit Cabinet commit (`68105d8` on jdooley-clt/arcade main).
+export const cabinetSha = '68105d88065d3604f8757be2027ad4922ef6dce3';
 export const cabinetRoot = resolve('.playwright-cabinet');
 export const siteRoot = resolve('_site');
 export const cabinetDraftRoot = resolve('cabinet');
@@ -17,7 +17,7 @@ export const fixtureEntry = {
   category: 'Lunar buggy patrol',
   url: '/mona-patrol/',
   repository: 'https://github.com/jdooley-clt/mona-patrol',
-  art: './assets/mona-patrol.png',
+  art: './assets/mona-patrol.webp',
   coverArt: './assets/mona-patrol-cover.svg',
   coverCharacter: './assets/mona-patrol-character.svg',
   accent: 'lavender',

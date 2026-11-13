@@ -5,7 +5,7 @@
   "category": "Lunar buggy patrol",
   "url": "https://jdooley-clt.github.io/mona-patrol/",
   "repository": "https://github.com/jdooley-clt/mona-patrol",
-  "art": "./assets/mona-patrol.png",
+  "art": "./assets/mona-patrol.webp",
   "coverArt": "./assets/mona-patrol-cover.svg",
   "coverCharacter": "./assets/mona-patrol-character.svg",
   "accent": "lavender",

@@ -1,9 +1,60 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { root } from '../scripts/serve.mjs';
-import { cabinetRoot, cabinetSha } from '../scripts/cabinet.mjs';
+import { gzipSync } from 'node:zlib';
+import { PUBLISHED, root } from '../scripts/serve.mjs';
+import { cabinetSha } from '../scripts/cabinet.mjs';
+
+const SITE_BASELINE_RAW_BYTES = 204_661;
+const SITE_BASELINE_GZIP_BYTES = 68_859;
+const EXPECTED_ACTION_NAMES = [
+  'actions/checkout',
+  'actions/setup-node',
+  'actions/upload-pages-artifact',
+  'actions/upload-artifact',
+  'actions/configure-pages',
+  'actions/deploy-pages',
+];
+const EXPECTED_PAGES_GUARD =
+  "github.repository == 'jdooley-clt/mona-patrol' && !github.event.repository.private && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'";
+
+function webpDimensions(buf) {
+  assert.equal(buf.subarray(0, 4).toString('ascii'), 'RIFF', 'WebP RIFF header');
+  assert.equal(buf.subarray(8, 12).toString('ascii'), 'WEBP', 'WebP signature');
+  const chunk = buf.subarray(12, 16).toString('ascii');
+  if (chunk === 'VP8X') {
+    return [buf.readUIntLE(24, 3) + 1, buf.readUIntLE(27, 3) + 1];
+  }
+  if (chunk === 'VP8 ') {
+    return [buf.readUInt16LE(26) & 0x3fff, buf.readUInt16LE(28) & 0x3fff];
+  }
+  if (chunk === 'VP8L') {
+    const bits = buf.readUInt32LE(21);
+    return [(bits & 0x3fff) + 1, ((bits >>> 14) & 0x3fff) + 1];
+  }
+  throw new Error(`Unsupported WebP chunk: ${chunk}`);
+}
+
+async function measureSiteBytes(dir) {
+  let rawBytes = 0;
+  let gzipBytes = 0;
+  async function walk(current) {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+      } else {
+        const buf = await readFile(full);
+        rawBytes += buf.length;
+        if (buf.length > 0) gzipBytes += gzipSync(buf, { level: 9 }).length;
+      }
+    }
+  }
+  await walk(dir);
+  return { rawBytes, gzipBytes };
+}
 
 async function collectTrackedFiles(dir, prefix = '') {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -39,13 +90,23 @@ test('README lines stay <= 100 chars and include required sections and attributi
     '## Local dev',
     '## Tests',
     '## Cabinet compatibility',
+    '## Deployment',
     '## Origins',
     '## Licensing',
   ]) {
     assert.ok(readme.includes(heading), `README includes ${heading}`);
   }
 
-  assert.ok(readme.includes('not published'), 'README states game is not published yet');
+  assert.ok(
+    readme.includes('https://jdooley-clt.github.io/mona-patrol/'),
+    'README links to live GitHub Pages URL',
+  );
+  assert.ok(
+    readme.includes('https://jdooley-clt.github.io/arcade/'),
+    'README links back to GitHub Arcade',
+  );
+  assert.match(readme, /Direct pushes\s+to `main` are blocked/);
+  assert.ok(readme.includes('gh run rerun <run-id> --failed'));
   assert.ok(readme.includes(cabinetSha.slice(0, 7)), 'README names pinned cabinet SHA');
 
   const normalized = readme.replace(/\s+/g, ' ');
@@ -65,7 +126,7 @@ test('classic arcade title appears only once in README and nowhere in UI, metada
   const files = await collectTrackedFiles(root);
   const phrase = new RegExp('Moon' + '\\s+' + 'Patrol', 'gi');
   for (const rel of files) {
-    if (rel.endsWith('.png') || rel === 'tests/repo.test.js') continue;
+    if (rel.endsWith('.png') || rel.endsWith('.webp') || rel === 'tests/repo.test.js') continue;
     const text = await readFile(join(root, rel), 'utf8');
     const matches = [...text.matchAll(phrase)];
     if (rel === 'README.md') {
@@ -76,7 +137,7 @@ test('classic arcade title appears only once in README and nowhere in UI, metada
   }
 });
 
-test('LICENSE, NOTICE, SECURITY.md, dependabot.yml, and non-deploying CI workflow are valid', async () => {
+test('LICENSE, NOTICE, SECURITY.md, dependabot.yml, package-lock.json, and pages.yml are valid', async () => {
   const license = await readFile(join(root, 'LICENSE'), 'utf8');
   assert.ok(license.includes('MIT License'));
   assert.ok(license.includes('Copyright (c) 2026 Jeramiah Dooley'));
@@ -85,6 +146,7 @@ test('LICENSE, NOTICE, SECURITY.md, dependabot.yml, and non-deploying CI workflo
   assert.ok(notice.includes('MIT License'));
   assert.ok(notice.includes('https://octodex.github.com/faq/'));
   assert.ok(notice.includes('GitHub, Inc.'));
+  assert.ok(notice.includes('*.webp'));
 
   const security = await readFile(join(root, 'SECURITY.md'), 'utf8');
   assert.ok(security.includes('# Security Policy'));
@@ -94,21 +156,43 @@ test('LICENSE, NOTICE, SECURITY.md, dependabot.yml, and non-deploying CI workflo
   assert.ok(dependabot.includes('package-ecosystem: "github-actions"'));
   assert.ok(dependabot.includes('interval: "weekly"'));
 
-  const ci = await readFile(join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
-  const activeLines = ci
-    .split(/\r?\n/)
-    .filter((line) => !line.trimStart().startsWith('#'))
-    .join('\n');
-  assert.ok(activeLines.includes('permissions:\n  contents: read'));
-  assert.ok(activeLines.includes('persist-credentials: false'));
-  assert.ok(!activeLines.includes('deploy-pages'), 'active CI must not deploy Pages');
-  assert.ok(!activeLines.includes('upload-pages-artifact'), 'active CI must not upload Pages artifact');
-
-  const usesMatches = [...activeLines.matchAll(/uses:\s*([^\s#]+)/g)];
-  assert.ok(usesMatches.length >= 3);
-  for (const [, actionRef] of usesMatches) {
-    assert.match(actionRef, /^[^@]+@[0-9a-f]{40}$/, `Action ${actionRef} is SHA-pinned`);
+  const lockfile = await readFile(join(root, 'package-lock.json'), 'utf8');
+  for (const [, resolvedUrl] of lockfile.matchAll(/"resolved":\s*"([^"]+)"/g)) {
+    assert.ok(
+      resolvedUrl.startsWith('https://registry.npmjs.org/'),
+      `package-lock resolved URL uses public npm registry: ${resolvedUrl}`,
+    );
   }
+
+  const legacyCi = await stat(join(root, '.github', 'workflows', 'ci.yml')).catch(() => null);
+  assert.equal(legacyCi, null, 'legacy ci.yml workflow is removed');
+
+  const workflow = await readFile(join(root, '.github', 'workflows', 'pages.yml'), 'utf8');
+  assert.ok(workflow.includes('name: Deploy game to GitHub Pages'));
+  assert.ok(workflow.includes('name: Cabinet compatibility'));
+  assert.ok(workflow.includes('permissions:\n  contents: read'));
+  assert.ok(workflow.includes('persist-credentials: false'));
+
+  const usesLines = workflow
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(?:-\s*)?uses:\s*/.test(line));
+  assert.equal(usesLines.length, EXPECTED_ACTION_NAMES.length);
+  const actionNames = [];
+  for (const line of usesLines) {
+    const match = /^\s*(?:-\s*)?uses:\s*([a-z0-9-]+\/[a-z0-9-]+)@([0-9a-f]{40})\s+#\s*v\d+(?:\.\d+)*\s*$/.exec(
+      line,
+    );
+    assert.ok(match, `Workflow uses line has 40-char SHA pin and version comment: ${line}`);
+    actionNames.push(match[1]);
+  }
+  assert.deepEqual(actionNames, EXPECTED_ACTION_NAMES);
+
+  const guardCount = workflow.split(EXPECTED_PAGES_GUARD).length - 1;
+  assert.equal(
+    guardCount,
+    2,
+    'Both upload-pages-artifact and deploy job carry !github.event.repository.private guard',
+  );
 });
 
 test('draft cabinet/games.json entry validates against pinned arcade src/catalog.js when present', async () => {
@@ -130,18 +214,23 @@ test('draft cabinet/games.json entry validates against pinned arcade src/catalog
     if (err.code !== 'ERR_MODULE_NOT_FOUND') throw err;
   }
 
+  assert.equal(draftEntry.art, './assets/mona-patrol.webp');
+
   // Verify all shipping cabinet artwork files exist in both cabinet/ and assets/, are byte-identical,
-  // meet exact dimensions (640x360 gameplay PNG), and use self-contained SVGs with no external refs.
-  for (const name of ['mona-patrol.png', 'mona-patrol-cover.svg', 'mona-patrol-character.svg']) {
+  // meet exact dimensions (640x360 gameplay WebP <= 25 KB), and use self-contained SVGs.
+  for (const name of ['mona-patrol.webp', 'mona-patrol-cover.svg', 'mona-patrol-character.svg']) {
     const cabBuf = await readFile(join(root, 'cabinet', name));
     const assetBuf = await readFile(join(root, 'assets', name));
     assert.ok(cabBuf.length > 0, `cabinet/${name} is non-empty`);
     assert.equal(Buffer.compare(cabBuf, assetBuf), 0, `cabinet/${name} matches assets/${name}`);
   }
 
-  const pngBuf = await readFile(join(root, 'cabinet', 'mona-patrol.png'));
-  assert.equal(pngBuf.readUInt32BE(16), 640, 'mona-patrol.png width is 640px');
-  assert.equal(pngBuf.readUInt32BE(20), 360, 'mona-patrol.png height is 360px');
+  const webpBuf = await readFile(join(root, 'cabinet', 'mona-patrol.webp'));
+  assert.ok(
+    webpBuf.length <= 25_000,
+    `mona-patrol.webp stays <= 25 KB (${webpBuf.length} bytes)`,
+  );
+  assert.deepEqual(webpDimensions(webpBuf), [640, 360], 'mona-patrol.webp is 640x360');
 
   for (const svgName of ['mona-patrol-cover.svg', 'mona-patrol-character.svg']) {
     const svgText = await readFile(join(root, 'cabinet', svgName), 'utf8');
@@ -150,5 +239,32 @@ test('draft cabinet/games.json entry validates against pinned arcade src/catalog
     assert.ok(!/<script\b/i.test(svgText), `${svgName} contains no scripts`);
     assert.ok(!/<image\b/i.test(svgText), `${svgName} embeds no external raster images`);
     assert.ok(!/https?:\/\/(?!www\.w3\.org\/2000\/svg)/i.test(svgText), `${svgName} has no external URLs`);
+  }
+});
+
+test('staged _site payload stays within +10% of the raw and gzipped baseline budget', async (t) => {
+  const staged = await mkdtemp(join(tmpdir(), 'mona-patrol-site-'));
+  t.after(() => rm(staged, { recursive: true, force: true }));
+  for (const entry of PUBLISHED) {
+    await cp(join(root, entry), join(staged, entry), { recursive: true });
+  }
+  await writeFile(join(staged, '.nojekyll'), '');
+
+  const { rawBytes, gzipBytes } = await measureSiteBytes(staged);
+  const maxRaw = Math.floor(SITE_BASELINE_RAW_BYTES * 1.1);
+  const maxGzip = Math.floor(SITE_BASELINE_GZIP_BYTES * 1.1);
+  assert.ok(
+    rawBytes <= maxRaw,
+    `staged _site raw payload ${rawBytes} B exceeds +10% budget ${maxRaw} B (baseline ${SITE_BASELINE_RAW_BYTES} B)`,
+  );
+  assert.ok(
+    gzipBytes <= maxGzip,
+    `staged _site gzip payload ${gzipBytes} B exceeds +10% budget ${maxGzip} B (baseline ${SITE_BASELINE_GZIP_BYTES} B)`,
+  );
+
+  const existingSite = join(root, '_site');
+  const existingStat = await stat(existingSite).catch(() => null);
+  if (existingStat?.isDirectory()) {
+    assert.deepEqual(await measureSiteBytes(existingSite), { rawBytes, gzipBytes });
   }
 });

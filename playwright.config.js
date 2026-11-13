@@ -6,7 +6,7 @@ export default defineConfig({
   testMatch: '*.spec.js',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 2 : undefined,
   timeout: 90_000,
   expect: { timeout: 10_000 },
