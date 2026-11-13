@@ -37,6 +37,14 @@ function webpDimensions(buf) {
   throw new Error(`Unsupported WebP chunk: ${chunk}`);
 }
 
+function extractHrefs(text) {
+  const hrefs = new Set();
+  for (const [raw] of text.matchAll(/https?:\/\/[^\s)>`"]+/g)) {
+    hrefs.add(new URL(raw.replace(/[.,;]+$/, '')).href);
+  }
+  return hrefs;
+}
+
 async function measureSiteBytes(dir) {
   let rawBytes = 0;
   let gzipBytes = 0;
@@ -97,12 +105,16 @@ test('README lines stay <= 100 chars and include required sections and attributi
     assert.ok(readme.includes(heading), `README includes ${heading}`);
   }
 
+  const readmeHrefs = extractHrefs(readme);
   assert.ok(
-    readme.includes('https://jdooley-clt.github.io/mona-patrol/'),
+    lines.some((line) => line === '- **Play:** <https://jdooley-clt.github.io/mona-patrol/>') &&
+      readmeHrefs.has('https://jdooley-clt.github.io/mona-patrol/'),
     'README links to live GitHub Pages URL',
   );
   assert.ok(
-    readme.includes('https://jdooley-clt.github.io/arcade/'),
+    lines.some(
+      (line) => line === '- **More games:** [GitHub Arcade](https://jdooley-clt.github.io/arcade/)',
+    ) && readmeHrefs.has('https://jdooley-clt.github.io/arcade/'),
     'README links back to GitHub Arcade',
   );
   assert.match(readme, /Direct pushes\s+to `main` are blocked/);
@@ -143,8 +155,9 @@ test('LICENSE, NOTICE, SECURITY.md, dependabot.yml, package-lock.json, and pages
   assert.ok(license.includes('Copyright (c) 2026 Jeramiah Dooley'));
 
   const notice = await readFile(join(root, 'NOTICE'), 'utf8');
+  const noticeHrefs = extractHrefs(notice);
   assert.ok(notice.includes('MIT License'));
-  assert.ok(notice.includes('https://octodex.github.com/faq/'));
+  assert.ok(noticeHrefs.has('https://octodex.github.com/faq/'));
   assert.ok(notice.includes('GitHub, Inc.'));
   assert.ok(notice.includes('*.webp'));
 
@@ -158,8 +171,9 @@ test('LICENSE, NOTICE, SECURITY.md, dependabot.yml, package-lock.json, and pages
 
   const lockfile = await readFile(join(root, 'package-lock.json'), 'utf8');
   for (const [, resolvedUrl] of lockfile.matchAll(/"resolved":\s*"([^"]+)"/g)) {
-    assert.ok(
-      resolvedUrl.startsWith('https://registry.npmjs.org/'),
+    assert.equal(
+      new URL(resolvedUrl).origin,
+      'https://registry.npmjs.org',
       `package-lock resolved URL uses public npm registry: ${resolvedUrl}`,
     );
   }
