@@ -16,6 +16,7 @@ const TYPES = {
   '.json': 'application/json',
   '.webmanifest': 'application/manifest+json',
   '.png': 'image/png',
+  '.webp': 'image/webp',
 };
 
 export function resolvePublished(baseDir, urlPath) {

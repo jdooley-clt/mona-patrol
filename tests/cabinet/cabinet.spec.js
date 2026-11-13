@@ -37,8 +37,25 @@ const test = base.extend({
   },
 });
 
-const card = (page) => page.getByRole('button', { name: 'Play Mona Patrol', exact: true });
+const card = (page) => page.getByRole('button', { name: /\bMona Patrol\b/ });
 const stageData = (ctx, key) => ctx.locator('#stage').getAttribute(`data-${key}`);
+
+async function allAxeViolations(page) {
+  const { violations } = await new AxeBuilder({ page })
+    .options({
+      rules: {
+        'label-content-name-mismatch': { enabled: true },
+        'target-size': { enabled: true },
+        'focus-order-semantics': { enabled: true },
+      },
+    })
+    .analyze();
+  return violations.map((v) => ({
+    id: v.id,
+    impact: v.impact,
+    targets: v.nodes.map((n) => n.target),
+  }));
+}
 
 async function readyEmbeddedGame(page) {
   const iframe = page.locator('#frame-host iframe');
@@ -145,8 +162,8 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   await page.locator('[data-sector-pick="0"]').click();
   await expect.poll(() => stageData(page, 'checkpoint')).toBe('A');
 
-  // axe-core scan in ready (light mode)
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  // axe-core scan in ready (light mode) across all severities
+  expect(await allAxeViolations(page)).toEqual([]);
 
   // Start with Enter, verify focus moves to #stage and ARIA live announcement fires
   await page.keyboard.press('Enter');
@@ -159,7 +176,7 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
     st.course.obstacles = [];
     st.course.waves = [];
   });
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await allAxeViolations(page)).toEqual([]);
 
   // Focus standalone Arcade link — game keys must not hijack link focus
   await arcadeLink.focus();
@@ -182,7 +199,7 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   await page.locator('#help').click();
   await expect(page.locator('#help-dialog')).toBeVisible();
   await expect.poll(() => stageData(page, 'status')).toBe('paused');
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await allAxeViolations(page)).toEqual([]);
   await page.keyboard.press('Escape');
   await expect(page.locator('#help-dialog')).toBeHidden();
   await expect.poll(() => stageData(page, 'status')).toBe('playing');
@@ -190,7 +207,7 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   // Trigger blur -> auto-pauses + axe scan on paused overlay & Resume controls
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect.poll(() => stageData(page, 'status')).toBe('paused');
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await allAxeViolations(page)).toEqual([]);
 
   // Resume, verify Stage A–E Clear stats screen + Replay A–E + axe scan
   await page.keyboard.press('Enter');
@@ -213,7 +230,7 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   await expect(page.locator('#stat-ufos')).toHaveText('5 / 6');
   await expect(page.locator('#stat-rocks')).toHaveText('4');
   await expect(page.locator('#primary')).toBeFocused();
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await allAxeViolations(page)).toEqual([]);
 
   await page.locator('#replay-sector').click();
   await expect.poll(() => stageData(page, 'status')).toBe('playing');
@@ -230,7 +247,19 @@ test('standalone page links have >=44px touch targets, preserve keyboard nav, an
   await expect.poll(() => stageData(page, 'status')).toBe('gameover');
   await expect(page.locator('#primary')).toBeFocused();
   await expect(page.locator('#announcer')).toContainText('Game over');
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await allAxeViolations(page)).toEqual([]);
+
+  // Injected-violation sanity check: AxeBuilder must catch an unlabeled button
+  await page.evaluate(() => {
+    const probe = document.createElement('button');
+    probe.id = 'axe-sanity-probe';
+    probe.type = 'button';
+    document.body.append(probe);
+  });
+  const injected = await allAxeViolations(page);
+  expect(injected.some((v) => v.id === 'button-name')).toBe(true);
+  await page.evaluate(() => document.getElementById('axe-sanity-probe')?.remove());
+  expect(await allAxeViolations(page)).toEqual([]);
 
   // Standalone link navigation works via Enter
   await arcadeLink.focus();

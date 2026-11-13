@@ -6,10 +6,11 @@ and race through checkpoints **A** to **Z**.
 
 ## Play
 
-Mona Patrol is not published online yet while this repository remains private. When published,
-it will join [GitHub Arcade](https://jdooley-clt.github.io/arcade/).
+- **Play:** <https://jdooley-clt.github.io/mona-patrol/>
+- **More games:** [GitHub Arcade](https://jdooley-clt.github.io/arcade/)
 
-To play right now on your machine, run the local preview server (see [Local dev](#local-dev)).
+It can also be installed as an app from your browser's address bar or Share menu, or run locally
+with `npm start` (see [Local dev](#local-dev)).
 
 ## Controls
 
@@ -83,14 +84,21 @@ npm run test:cabinet
 
 ## Cabinet compatibility
 
-`scripts/cabinet.mjs` pins `jdooley-clt/arcade` at commit `83f4bcd`
-(`83f4bcdf6524aa445a7d0fce60e45aea7ffb8b55`). `npm run cabinet:setup` fetches that exact commit
+`scripts/cabinet.mjs` pins `jdooley-clt/arcade` at commit `68105d8`
+(`68105d88065d3604f8757be2027ad4922ef6dce3`). `npm run cabinet:setup` fetches that exact commit
 into `.playwright-cabinet`, and `scripts/serve-cabinet.mjs` mounts the cabinet at `/arcade/`
 and `_site/` at `/mona-patrol/` on one origin to verify launch, keyboard/touch input, iframe
 focus, standalone backlink hiding, reduced motion, and teardown.
 
-Cabinet registration assets (`mona-patrol.png`, `mona-patrol-cover.svg`,
+Cabinet registration assets (`mona-patrol.webp`, `mona-patrol-cover.svg`,
 `mona-patrol-character.svg`, and `cabinet/games.json`) are staged in `cabinet/` and `assets/`.
+
+## Deployment
+
+`.github/workflows/pages.yml` gates GitHub Pages deployment on the `Cabinet compatibility` job
+and checks that the published digest matches the tested `_site/index.html` artifact. Direct pushes
+to `main` are blocked; changes land via pull requests passing `Cabinet compatibility`. If a runner
+ever flakes on `main`, re-run failed jobs with `gh run rerun <run-id> --failed`.
 
 ## Origins
 

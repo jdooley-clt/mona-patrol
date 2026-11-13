@@ -6,7 +6,7 @@ game mechanics in this repository. It does not grant rights to GitHub's
 Octocat design or to any GitHub trademarks.
 
 Mona / Octocat artwork in assets/favicon.svg, assets/octocat.svg,
-assets/mona-patrol-character.svg, assets/*.png,
-cabinet/mona-patrol-character.svg, cabinet/mona-patrol.png, and the
+assets/mona-patrol-character.svg, assets/*.png, assets/*.webp,
+cabinet/mona-patrol-character.svg, cabinet/mona-patrol.webp, and the
 in-game canvas sprites remains copyright GitHub, Inc. and is subject to
 GitHub's artwork terms: https://octodex.github.com/faq/
